@@ -1,0 +1,3 @@
+com/aitechmarketplace/backend/BackendApplicationTests.class
+com/aitechmarketplace/backend/auth/service/AuthServiceImplTest.class
+com/aitechmarketplace/backend/user/service/UserServiceImplTest.class

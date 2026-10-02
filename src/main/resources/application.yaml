@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: ai-tech-marketplace-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:55433/ai_marketplace
+    username: ai_marketplace
+    password: ai_marketplace_dev
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+  endpoint:
+    health:
+      show-details: never

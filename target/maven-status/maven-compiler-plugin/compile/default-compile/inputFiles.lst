@@ -1,0 +1,14 @@
+/home/hieunv1/Documents/ai-tech-marketplace/ai-tech-marketplace-backend/src/main/java/com/aitechmarketplace/backend/BackendApplication.java
+/home/hieunv1/Documents/ai-tech-marketplace/ai-tech-marketplace-backend/src/main/java/com/aitechmarketplace/backend/auth/controller/AuthController.java
+/home/hieunv1/Documents/ai-tech-marketplace/ai-tech-marketplace-backend/src/main/java/com/aitechmarketplace/backend/auth/dto/RegisterRequest.java
+/home/hieunv1/Documents/ai-tech-marketplace/ai-tech-marketplace-backend/src/main/java/com/aitechmarketplace/backend/auth/dto/UserResponse.java
+/home/hieunv1/Documents/ai-tech-marketplace/ai-tech-marketplace-backend/src/main/java/com/aitechmarketplace/backend/auth/service/AuthService.java
+/home/hieunv1/Documents/ai-tech-marketplace/ai-tech-marketplace-backend/src/main/java/com/aitechmarketplace/backend/auth/service/AuthServiceImpl.java
+/home/hieunv1/Documents/ai-tech-marketplace/ai-tech-marketplace-backend/src/main/java/com/aitechmarketplace/backend/config/SecurityConfig.java
+/home/hieunv1/Documents/ai-tech-marketplace/ai-tech-marketplace-backend/src/main/java/com/aitechmarketplace/backend/user/entity/Role.java
+/home/hieunv1/Documents/ai-tech-marketplace/ai-tech-marketplace-backend/src/main/java/com/aitechmarketplace/backend/user/entity/RoleName.java
+/home/hieunv1/Documents/ai-tech-marketplace/ai-tech-marketplace-backend/src/main/java/com/aitechmarketplace/backend/user/entity/User.java
+/home/hieunv1/Documents/ai-tech-marketplace/ai-tech-marketplace-backend/src/main/java/com/aitechmarketplace/backend/user/repository/RoleRepository.java
+/home/hieunv1/Documents/ai-tech-marketplace/ai-tech-marketplace-backend/src/main/java/com/aitechmarketplace/backend/user/repository/UserRepository.java
+/home/hieunv1/Documents/ai-tech-marketplace/ai-tech-marketplace-backend/src/main/java/com/aitechmarketplace/backend/user/service/UserService.java
+/home/hieunv1/Documents/ai-tech-marketplace/ai-tech-marketplace-backend/src/main/java/com/aitechmarketplace/backend/user/service/UserServiceImpl.java
