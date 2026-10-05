@@ -97,7 +97,7 @@ class AuthControllerIntegrationTest {
         mockMvc.perform(
                 get("/api/users/me")
             )
-            .andExpect(status().isForbidden());
+            .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -161,6 +161,6 @@ class AuthControllerIntegrationTest {
                         "Bearer invalid.jwt.token"
                     )
             )
-            .andExpect(status().isForbidden());
+            .andExpect(status().isUnauthorized());
     }
 }
