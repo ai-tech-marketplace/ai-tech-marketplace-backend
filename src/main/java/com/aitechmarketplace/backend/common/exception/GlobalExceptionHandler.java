@@ -25,4 +25,15 @@ public class GlobalExceptionHandler {
     public Map<String, String> handleForbiddenException(ForbiddenException exception) {
         return Map.of("error", exception.getMessage());
     }
+
+    @ExceptionHandler(ConflictException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, String> handleConflictException(
+        ConflictException exception
+    ) {
+        return Map.of(
+            "error",
+            exception.getMessage()
+        );
+    }
 }
