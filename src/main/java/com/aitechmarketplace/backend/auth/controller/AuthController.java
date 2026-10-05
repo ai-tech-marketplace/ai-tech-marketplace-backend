@@ -1,8 +1,11 @@
 package com.aitechmarketplace.backend.auth.controller;
 
+import com.aitechmarketplace.backend.auth.dto.LoginRequest;
+import com.aitechmarketplace.backend.auth.dto.LoginResponse;
 import com.aitechmarketplace.backend.auth.dto.RegisterRequest;
 import com.aitechmarketplace.backend.auth.dto.UserResponse;
 import com.aitechmarketplace.backend.auth.service.AuthService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,18 +16,27 @@ public class AuthController {
 
     private final AuthService authService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(
+        AuthService authService
+    ) {
         this.authService = authService;
     }
 
     @PostMapping("/register")
     public ResponseEntity<UserResponse> register(
-        @RequestBody RegisterRequest request
+        @Valid @RequestBody RegisterRequest request
     ) {
-        UserResponse response = authService.register(request);
-
         return ResponseEntity
             .status(HttpStatus.CREATED)
-            .body(response);
+            .body(authService.register(request));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(
+        @Valid @RequestBody LoginRequest request
+    ) {
+        return ResponseEntity.ok(
+            authService.login(request)
+        );
     }
 }
