@@ -49,28 +49,26 @@ public class JwtService {
             .compact();
     }
 
-    public String extractUsername(String token) {
-
-        return extractAllClaims(token)
-            .getSubject();
-    }
-
-    public boolean isTokenValid(
-        String token,
-        String username
-    ) {
-        Claims claims = extractAllClaims(token);
-
-        return claims.getSubject().equals(username)
-            && claims.getExpiration().after(new Date());
-    }
-
-    private Claims extractAllClaims(String token) {
+    public Claims parseToken(String token) {
 
         return Jwts.parser()
             .verifyWith(secretKey)
             .build()
             .parseSignedClaims(token)
             .getPayload();
+    }
+
+    public String extractUsername(String token) {
+        return parseToken(token).getSubject();
+    }
+
+    public boolean isTokenValid(
+        String token,
+        String username
+    ) {
+        Claims claims = parseToken(token);
+
+        return username.equals(claims.getSubject())
+            && claims.getExpiration().after(new Date());
     }
 }

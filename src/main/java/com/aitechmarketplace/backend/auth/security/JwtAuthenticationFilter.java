@@ -1,5 +1,6 @@
 package com.aitechmarketplace.backend.auth.security;
 
+import com.aitechmarketplace.backend.user.entity.User;
 import com.aitechmarketplace.backend.user.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -37,62 +38,67 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (
+            authHeader == null ||
+            !authHeader.startsWith("Bearer ")
+        ) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = authHeader.substring(7);
+        String token = authHeader.substring(7).trim();
+
+        if (token.isBlank()) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         try {
             String email = jwtService.extractUsername(token);
 
             if (
-                email != null
-                && SecurityContextHolder
+                email != null &&
+                SecurityContextHolder
                     .getContext()
                     .getAuthentication() == null
             ) {
 
                 userService.findByEmail(email)
-                    .filter(user -> user.isActive())
-                    .ifPresent(user -> {
-
-                        if (!jwtService.isTokenValid(token, email)) {
-                            return;
-                        }
-
-                        var authorities = user.getRoles()
-                            .stream()
-                            .map(role ->
-                                new SimpleGrantedAuthority(
-                                    "ROLE_" + role.getName().name()
-                                )
-                            )
-                            .toList();
-
-                        var authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                user,
-                                null,
-                                authorities
-                            );
-
-                        authentication.setDetails(
-                            new WebAuthenticationDetailsSource()
-                                .buildDetails(request)
-                        );
-
-                        SecurityContextHolder
-                            .getContext()
-                            .setAuthentication(authentication);
-                    });
+                    .filter(User::isActive)
+                    .filter(user ->
+                        jwtService.isTokenValid(token, email)
+                    )
+                    .ifPresent(this::authenticate);
             }
 
-        } catch (Exception ignored) {
-            // Invalid JWT -> continue without authentication.
+        } catch (Exception e) {
+            // Invalid/expired JWT.
+            // Continue without authentication.
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private void authenticate(User user) {
+
+        var authorities = user.getRoles()
+            .stream()
+            .map(role ->
+                new SimpleGrantedAuthority(
+                    "ROLE_" + role.getName().name()
+                )
+            )
+            .toList();
+
+        var authentication =
+            new UsernamePasswordAuthenticationToken(
+                user,
+                null,
+                authorities
+            );
+
+        SecurityContextHolder
+            .getContext()
+            .setAuthentication(authentication);
     }
 }
