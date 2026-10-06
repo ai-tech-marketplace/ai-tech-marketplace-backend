@@ -4,10 +4,18 @@ import com.aitechmarketplace.backend.category.entity.Category;
 import com.aitechmarketplace.backend.category.repository.CategoryRepository;
 import com.aitechmarketplace.backend.common.exception.ForbiddenException;
 import com.aitechmarketplace.backend.common.exception.NotFoundException;
+import com.aitechmarketplace.backend.product.dto.ProductPageResponse;
+import com.aitechmarketplace.backend.product.dto.ProductResponse;
+import com.aitechmarketplace.backend.product.dto.ProductSearchRequest;
 import com.aitechmarketplace.backend.product.entity.Product;
 import com.aitechmarketplace.backend.product.repository.ProductRepository;
+import com.aitechmarketplace.backend.product.specification.ProductSpecification;
 import com.aitechmarketplace.backend.user.entity.User;
 import com.aitechmarketplace.backend.user.repository.UserRepository;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -151,6 +159,44 @@ public class ProductServiceImpl implements ProductService {
         }
 
         return new HashSet<>(categories);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProductPageResponse search(
+    ProductSearchRequest request,
+    Pageable pageable
+    ) {
+    Specification<Product> specification =
+    ProductSpecification.isActive()
+    .and(
+    ProductSpecification.hasKeyword(
+    request.keyword()
+    )
+    )
+    .and(
+    ProductSpecification.hasCategoryId(
+    request.categoryId()
+    )
+    )
+    .and(
+    ProductSpecification.priceGreaterThanOrEqual(
+    request.minPrice()
+    )
+    )
+    .and(
+    ProductSpecification.priceLessThanOrEqual(
+    request.maxPrice()
+    )
+    );
+
+    Page<ProductResponse> result =
+        productRepository
+            .findAll(specification, pageable)
+            .map(ProductResponse::from);
+
+    return ProductPageResponse.from(result);
+
     }
 
 }
