@@ -3,6 +3,10 @@ package com.aitechmarketplace.backend.category.entity;
 import jakarta.persistence.*;
 
 import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Set;
+
+import com.aitechmarketplace.backend.product.entity.Product;
 
 @Entity
 @Table(
@@ -19,6 +23,9 @@ public class Category {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToMany(mappedBy = "categories", fetch = FetchType.LAZY)
+    private Set<Product> products = new HashSet<>();
 
     @Column(
         nullable = false,
@@ -96,5 +103,9 @@ public class Category {
 
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public Set<Product> getProducts() {
+        return products;
     }
 }
