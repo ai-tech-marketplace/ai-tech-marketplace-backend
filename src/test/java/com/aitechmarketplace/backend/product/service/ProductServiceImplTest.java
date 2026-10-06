@@ -1,5 +1,6 @@
 package com.aitechmarketplace.backend.product.service;
 
+import com.aitechmarketplace.backend.category.repository.CategoryRepository;
 import com.aitechmarketplace.backend.common.exception.ForbiddenException;
 import com.aitechmarketplace.backend.common.exception.NotFoundException;
 import com.aitechmarketplace.backend.product.entity.Product;
@@ -13,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -31,6 +33,9 @@ class ProductServiceImplTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private CategoryRepository categoryRepository;
+
     @InjectMocks
     private ProductServiceImpl productService;
 
@@ -41,54 +46,51 @@ class ProductServiceImplTest {
         seller.setActive(true);
 
         when(userRepository.findById(1L))
-            .thenReturn(Optional.of(seller));
+                .thenReturn(Optional.of(seller));
 
         Product savedProduct = new Product();
 
         when(productRepository.save(any(Product.class)))
-            .thenReturn(savedProduct);
+                .thenReturn(savedProduct);
 
         Product result = productService.create(
-            1L,
-            "MacBook Pro",
-            "M4 MacBook",
-            new BigDecimal("35000000.00"),
-            5
-        );
+                1L,
+                "MacBook Pro",
+                "M4 MacBook",
+                new BigDecimal("35000000.00"),
+                5,
+                List.of());
 
         assertEquals(savedProduct, result);
 
         verify(userRepository)
-            .findById(1L);
+                .findById(1L);
 
         verify(productRepository)
-            .save(any(Product.class));
+                .save(any(Product.class));
     }
 
     @Test
     void create_withUnknownSeller_shouldThrowException() {
         when(userRepository.findById(999L))
-            .thenReturn(Optional.empty());
+                .thenReturn(Optional.empty());
 
-        NotFoundException exception =
-            assertThrows(
+        NotFoundException exception = assertThrows(
                 NotFoundException.class,
                 () -> productService.create(
-                    999L,
-                    "MacBook Pro",
-                    "M4 MacBook",
-                    new BigDecimal("35000000.00"),
-                    5
-                )
-            );
+                        999L,
+                        "MacBook Pro",
+                        "M4 MacBook",
+                        new BigDecimal("35000000.00"),
+                        5,
+                        List.of()));
 
         assertEquals(
-            "Seller not found",
-            exception.getMessage()
-        );
+                "Seller not found",
+                exception.getMessage());
 
         verify(productRepository, never())
-            .save(any(Product.class));
+                .save(any(Product.class));
     }
 
     @Test
@@ -97,58 +99,145 @@ class ProductServiceImplTest {
         seller.setActive(false);
 
         when(userRepository.findById(1L))
-            .thenReturn(Optional.of(seller));
+                .thenReturn(Optional.of(seller));
 
-        IllegalStateException exception =
-            assertThrows(
+        IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
                 () -> productService.create(
-                    1L,
-                    "MacBook Pro",
-                    "M4 MacBook",
-                    new BigDecimal("35000000.00"),
-                    5
-                )
-            );
+                        1L,
+                        "MacBook Pro",
+                        "M4 MacBook",
+                        new BigDecimal("35000000.00"),
+                        5,
+                        List.of()));
 
         assertEquals(
-            "Seller account is inactive",
-            exception.getMessage()
-        );
+                "Seller account is inactive",
+                exception.getMessage());
+
+        verify(categoryRepository, never())
+                .findAllById(any());
 
         verify(productRepository, never())
-            .save(any(Product.class));
+                .save(any(Product.class));
     }
 
     @Test
     void update_whenUserDoesNotOwnProduct_shouldBeRejected() {
         User owner = new User();
+        owner.setActive(true);
+
+        try {
+            var idField = User.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(owner, 1L);
+        } catch (Exception exception) {
+            throw new RuntimeException(exception);
+        }
 
         Product product = new Product();
         product.setSeller(owner);
 
         when(productRepository.findById(1L))
-            .thenReturn(Optional.of(product));
+                .thenReturn(Optional.of(product));
 
-        ForbiddenException exception =
-            assertThrows(
+        ForbiddenException exception = assertThrows(
                 ForbiddenException.class,
                 () -> productService.update(
-                    1L,
-                    999L,
-                    "Updated",
-                    "Updated",
-                    new BigDecimal("1000000.00"),
-                    1
-                )
-            );
+                        1L,
+                        999L,
+                        false,
+                        "Updated",
+                        "Updated",
+                        new BigDecimal("1000000.00"),
+                        1,
+                        List.of()));
 
         assertEquals(
-            "You do not own this product",
-            exception.getMessage()
-        );
+                "You do not own this product",
+                exception.getMessage());
+
+        verify(categoryRepository, never())
+                .findAllById(any());
 
         verify(productRepository, never())
-            .save(any(Product.class));
+                .save(any(Product.class));
     }
+
+    @Test
+void updateStock_whenUserOwnsProduct_shouldUpdateStock() {
+    User owner = new User();
+    owner.setActive(true);
+
+    try {
+        var idField = User.class.getDeclaredField("id");
+        idField.setAccessible(true);
+        idField.set(owner, 1L);
+    } catch (Exception exception) {
+        throw new RuntimeException(exception);
+    }
+
+    Product product = new Product();
+    product.setSeller(owner);
+    product.setStockQuantity(5);
+
+    when(productRepository.findById(1L))
+            .thenReturn(Optional.of(product));
+
+    when(productRepository.save(product))
+            .thenReturn(product);
+
+    Product result = productService.updateStock(
+            1L,
+            1L,
+            false,
+            20
+    );
+
+    assertEquals(product, result);
+    assertEquals(20, result.getStockQuantity());
+
+    verify(productRepository)
+            .findById(1L);
+
+    verify(productRepository)
+            .save(product);
+}
+
+@Test
+void updateStock_whenUserDoesNotOwnProduct_shouldBeRejected() {
+    User owner = new User();
+    owner.setActive(true);
+
+    try {
+        var idField = User.class.getDeclaredField("id");
+        idField.setAccessible(true);
+        idField.set(owner, 1L);
+    } catch (Exception exception) {
+        throw new RuntimeException(exception);
+    }
+
+    Product product = new Product();
+    product.setSeller(owner);
+    product.setStockQuantity(5);
+
+    when(productRepository.findById(1L))
+            .thenReturn(Optional.of(product));
+
+    ForbiddenException exception = assertThrows(
+            ForbiddenException.class,
+            () -> productService.updateStock(
+                    1L,
+                    999L,
+                    false,
+                    20
+            ));
+
+    assertEquals(
+            "You are not allowed to update stock for this product",
+            exception.getMessage());
+
+    verify(productRepository, never())
+            .save(any(Product.class));
+}
 }

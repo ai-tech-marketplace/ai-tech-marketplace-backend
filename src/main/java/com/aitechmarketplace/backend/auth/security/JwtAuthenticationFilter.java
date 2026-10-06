@@ -22,26 +22,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final UserService userService;
 
     public JwtAuthenticationFilter(
-        JwtService jwtService,
-        UserService userService
-    ) {
+            JwtService jwtService,
+            UserService userService) {
         this.jwtService = jwtService;
         this.userService = userService;
     }
 
     @Override
     protected void doFilterInternal(
-        HttpServletRequest request,
-        HttpServletResponse response,
-        FilterChain filterChain
-    ) throws ServletException, IOException {
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain) throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
 
-        if (
-            authHeader == null ||
-            !authHeader.startsWith("Bearer ")
-        ) {
+        if (authHeader == null ||
+                !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -56,19 +52,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String email = jwtService.extractUsername(token);
 
-            if (
-                email != null &&
-                SecurityContextHolder
-                    .getContext()
-                    .getAuthentication() == null
-            ) {
+            if (email != null &&
+                    SecurityContextHolder
+                            .getContext()
+                            .getAuthentication() == null) {
 
                 userService.findByEmail(email)
-                    .filter(User::isActive)
-                    .filter(user ->
-                        jwtService.isTokenValid(token, email)
-                    )
-                    .ifPresent(this::authenticate);
+                        .filter(User::isActive)
+                        .filter(user -> jwtService.isTokenValid(token, email))
+                        .ifPresent(user -> authenticate(request, user));
             }
 
         } catch (Exception e) {
@@ -79,26 +71,32 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private void authenticate(User user) {
+    private void authenticate(
+            HttpServletRequest request,
+            User user) {
 
         var authorities = user.getRoles()
-            .stream()
-            .map(role ->
-                new SimpleGrantedAuthority(
-                    "ROLE_" + role.getName().name()
-                )
-            )
-            .toList();
+                .stream()
+                .map(role -> new SimpleGrantedAuthority(
+                        "ROLE_" + role.getName().name()))
+                .toList();
 
-        var authentication =
-            new UsernamePasswordAuthenticationToken(
+        var authentication = new UsernamePasswordAuthenticationToken(
                 user,
                 null,
-                authorities
-            );
+                authorities);
+
+        authentication.setDetails(
+                new WebAuthenticationDetailsSource()
+                        .buildDetails(request));
 
         SecurityContextHolder
-            .getContext()
-            .setAuthentication(authentication);
+                .getContext()
+                .setAuthentication(authentication);
+
+        request.setAttribute(
+                "userId",
+                user.getId());
     }
+
 }

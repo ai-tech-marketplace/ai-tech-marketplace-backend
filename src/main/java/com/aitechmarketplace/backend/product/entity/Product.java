@@ -1,10 +1,13 @@
 package com.aitechmarketplace.backend.product.entity;
 
+import com.aitechmarketplace.backend.category.entity.Category;
 import com.aitechmarketplace.backend.user.entity.User;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "products")
@@ -20,6 +23,15 @@ public class Product {
         nullable = false
     )
     private User seller;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+    name = "product_categories",
+    joinColumns = @JoinColumn(name = "product_id"),
+    inverseJoinColumns = @JoinColumn(name = "category_id")
+    )
+    private Set<Category> categories = new HashSet<>();
+
 
     @Column(
         nullable = false,
@@ -135,5 +147,13 @@ public class Product {
 
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public Set<Category> getCategories() {
+        return categories;
+    }
+
+    public void setCategories(Set<Category> categories) {
+        this.categories = categories;
     }
 }
