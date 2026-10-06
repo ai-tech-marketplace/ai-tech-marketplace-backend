@@ -18,7 +18,8 @@ public interface ProductService {
             String description,
             BigDecimal price,
             Integer stockQuantity,
-            List<Long> categoryIds);
+            List<Long> categoryIds
+    );
 
     Optional<Product> findById(Long id);
 
@@ -30,20 +31,23 @@ public interface ProductService {
 
     Product update(
             Long productId,
-            Long sellerId,
+            Long userId,
+            boolean isAdmin,
             String name,
             String description,
             BigDecimal price,
             Integer stockQuantity,
-            List<Long> categoryIds);
-
-        ProductPageResponse search(
-        ProductSearchRequest request,
-        Pageable pageable
-        );
+            List<Long> categoryIds
+    );
 
     void deactivate(
             Long productId,
-            Long sellerId);
+            Long userId,
+            boolean isAdmin
+    );
 
+    ProductPageResponse search(
+            ProductSearchRequest request,
+            Pageable pageable
+    );
 }

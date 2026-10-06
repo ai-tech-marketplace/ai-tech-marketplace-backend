@@ -36,6 +36,7 @@ public class ProductServiceImpl implements ProductService {
             ProductRepository productRepository,
             UserRepository userRepository,
             CategoryRepository categoryRepository) {
+
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
@@ -49,17 +50,21 @@ public class ProductServiceImpl implements ProductService {
             BigDecimal price,
             Integer stockQuantity,
             List<Long> categoryIds) {
+
         User seller = userRepository.findById(sellerId)
-                .orElseThrow(() -> new NotFoundException("Seller not found"));
+                .orElseThrow(() ->
+                        new NotFoundException("Seller not found"));
 
         if (!seller.isActive()) {
             throw new IllegalStateException(
                     "Seller account is inactive");
         }
 
-        Set<Category> categories = resolveCategories(categoryIds);
+        Set<Category> categories =
+                resolveCategories(categoryIds);
 
         Product product = new Product();
+
         product.setSeller(seller);
         product.setName(name);
         product.setDescription(description);
@@ -92,6 +97,7 @@ public class ProductServiceImpl implements ProductService {
     @Transactional(readOnly = true)
     public List<Product> findActiveProductsBySellerId(
             Long sellerId) {
+
         return productRepository.findBySellerIdAndActiveTrue(
                 sellerId);
     }
@@ -99,22 +105,35 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public Product update(
             Long productId,
-            Long sellerId,
+            Long userId,
+            boolean isAdmin,
             String name,
             String description,
             BigDecimal price,
             Integer stockQuantity,
             List<Long> categoryIds) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new NotFoundException("Product not found"));
 
-        if (!product.getSeller().getId().equals(sellerId)) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() ->
+                        new NotFoundException("Product not found"));
+
+        /*
+         * USER:
+         *   chỉ được sửa product của chính mình.
+         *
+         * ADMIN:
+         *   được sửa product của bất kỳ seller nào.
+         */
+        if (!isAdmin &&
+                !product.getSeller().getId().equals(userId)) {
+
             throw new ForbiddenException(
-                "You do not own this product"
+                    "You do not own this product"
             );
         }
 
-        Set<Category> categories = resolveCategories(categoryIds);
+        Set<Category> categories =
+                resolveCategories(categoryIds);
 
         product.setName(name);
         product.setDescription(description);
@@ -130,13 +149,26 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public void deactivate(
             Long productId,
-            Long sellerId) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new NotFoundException("Product not found"));
+            Long userId,
+            boolean isAdmin) {
 
-        if (!product.getSeller().getId().equals(sellerId)) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() ->
+                        new NotFoundException("Product not found"));
+
+        /*
+         * USER:
+         *   chỉ được deactivate product của chính mình.
+         *
+         * ADMIN:
+         *   được deactivate product của bất kỳ seller nào.
+         */
+        if (!isAdmin &&
+                !product.getSeller().getId().equals(userId)) {
+
             throw new ForbiddenException(
-                    "You are not allowed to deactivate this product");
+                    "You are not allowed to deactivate this product"
+            );
         }
 
         product.setActive(false);
@@ -146,14 +178,18 @@ public class ProductServiceImpl implements ProductService {
 
     private Set<Category> resolveCategories(
             List<Long> categoryIds) {
+
         if (categoryIds == null ||
                 categoryIds.isEmpty()) {
+
             return new HashSet<>();
         }
 
-        List<Category> categories = categoryRepository.findAllById(categoryIds);
+        List<Category> categories =
+                categoryRepository.findAllById(categoryIds);
 
         if (categories.size() != categoryIds.size()) {
+
             throw new NotFoundException(
                     "One or more categories not found");
         }
@@ -164,39 +200,37 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public ProductPageResponse search(
-    ProductSearchRequest request,
-    Pageable pageable
-    ) {
-    Specification<Product> specification =
-    ProductSpecification.isActive()
-    .and(
-    ProductSpecification.hasKeyword(
-    request.keyword()
-    )
-    )
-    .and(
-    ProductSpecification.hasCategoryId(
-    request.categoryId()
-    )
-    )
-    .and(
-    ProductSpecification.priceGreaterThanOrEqual(
-    request.minPrice()
-    )
-    )
-    .and(
-    ProductSpecification.priceLessThanOrEqual(
-    request.maxPrice()
-    )
-    );
+            ProductSearchRequest request,
+            Pageable pageable) {
 
-    Page<ProductResponse> result =
-        productRepository
-            .findAll(specification, pageable)
-            .map(ProductResponse::from);
+        Specification<Product> specification =
+                ProductSpecification.isActive()
+                        .and(
+                                ProductSpecification.hasKeyword(
+                                        request.keyword()
+                                )
+                        )
+                        .and(
+                                ProductSpecification.hasCategoryId(
+                                        request.categoryId()
+                                )
+                        )
+                        .and(
+                                ProductSpecification.priceGreaterThanOrEqual(
+                                        request.minPrice()
+                                )
+                        )
+                        .and(
+                                ProductSpecification.priceLessThanOrEqual(
+                                        request.maxPrice()
+                                )
+                        );
 
-    return ProductPageResponse.from(result);
+        Page<ProductResponse> result =
+                productRepository
+                        .findAll(specification, pageable)
+                        .map(ProductResponse::from);
 
+        return ProductPageResponse.from(result);
     }
-
 }

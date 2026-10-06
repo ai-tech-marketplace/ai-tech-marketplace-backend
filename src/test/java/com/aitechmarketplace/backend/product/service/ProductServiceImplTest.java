@@ -146,6 +146,7 @@ class ProductServiceImplTest {
                 () -> productService.update(
                         1L,
                         999L,
+                        false,
                         "Updated",
                         "Updated",
                         new BigDecimal("1000000.00"),
@@ -162,5 +163,4 @@ class ProductServiceImplTest {
         verify(productRepository, never())
                 .save(any(Product.class));
     }
-
 }

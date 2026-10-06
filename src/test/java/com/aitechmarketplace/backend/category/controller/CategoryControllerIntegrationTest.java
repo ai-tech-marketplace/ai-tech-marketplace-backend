@@ -1,7 +1,10 @@
 package com.aitechmarketplace.backend.category.controller;
 
 import com.aitechmarketplace.backend.category.repository.CategoryRepository;
+import com.aitechmarketplace.backend.user.entity.Role;
+import com.aitechmarketplace.backend.user.entity.RoleName;
 import com.aitechmarketplace.backend.user.entity.User;
+import com.aitechmarketplace.backend.user.repository.RoleRepository;
 import com.aitechmarketplace.backend.user.repository.UserRepository;
 import com.aitechmarketplace.backend.user.service.UserService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -46,6 +49,9 @@ class CategoryControllerIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -54,7 +60,8 @@ class CategoryControllerIntegrationTest {
     private final List<Long> createdCategoryIds =
         new ArrayList<>();
 
-    private Long createdUserId;
+    private final List<Long> createdUserIds =
+        new ArrayList<>();
 
     @AfterEach
     void cleanup() {
@@ -64,18 +71,20 @@ class CategoryControllerIntegrationTest {
                 .ifPresent(categoryRepository::delete)
         );
 
-        if (
-            createdUserId != null &&
-            userRepository.existsById(createdUserId)
-        ) {
-            userRepository.deleteById(createdUserId);
+        for (Long userId : createdUserIds) {
+            if (userRepository.existsById(userId)) {
+                userRepository.deleteById(userId);
+            }
         }
+
+        createdCategoryIds.clear();
+        createdUserIds.clear();
     }
 
     @Test
     void categoryCrud_shouldWork() throws Exception {
 
-        String token = createAndLoginUser();
+        String token = createAndLoginAdmin();
 
         String createResponse = mockMvc.perform(
                 post("/api/categories")
@@ -200,7 +209,7 @@ class CategoryControllerIntegrationTest {
     void createDuplicateCategory_shouldReturnConflict()
         throws Exception {
 
-        String token = createAndLoginUser();
+        String token = createAndLoginAdmin();
 
         String categoryName =
             "Duplicate-" + System.nanoTime();
@@ -259,7 +268,7 @@ class CategoryControllerIntegrationTest {
     void createInvalidCategory_shouldReturnBadRequest()
         throws Exception {
 
-        String token = createAndLoginUser();
+        String token = createAndLoginAdmin();
 
         mockMvc.perform(
                 post("/api/categories")
@@ -282,7 +291,7 @@ class CategoryControllerIntegrationTest {
     void findActiveCategories_shouldReturnOnlyActiveCategories()
         throws Exception {
 
-        String token = createAndLoginUser();
+        String token = createAndLoginAdmin();
 
         String activeName =
             "Active-" + System.nanoTime();
@@ -416,7 +425,7 @@ class CategoryControllerIntegrationTest {
     void updateUnknownCategory_shouldReturnNotFound()
         throws Exception {
 
-        String token = createAndLoginUser();
+        String token = createAndLoginAdmin();
 
         mockMvc.perform(
                 put("/api/categories/999999999")
@@ -439,7 +448,7 @@ class CategoryControllerIntegrationTest {
     void deleteUnknownCategory_shouldReturnNotFound()
         throws Exception {
 
-        String token = createAndLoginUser();
+        String token = createAndLoginAdmin();
 
         mockMvc.perform(
                 delete("/api/categories/999999999")
@@ -449,6 +458,126 @@ class CategoryControllerIntegrationTest {
                     )
             )
             .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void userCreateCategory_shouldReturnForbidden()
+        throws Exception {
+
+        String token = createAndLoginUser();
+
+        mockMvc.perform(
+                post("/api/categories")
+                    .header(
+                        "Authorization",
+                        "Bearer " + token
+                    )
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                            "name": "User Category",
+                            "description": "Should not be allowed"
+                        }
+                        """)
+            )
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void userUpdateCategory_shouldReturnForbidden()
+        throws Exception {
+
+        String adminToken = createAndLoginAdmin();
+
+        String createResponse = mockMvc.perform(
+                post("/api/categories")
+                    .header(
+                        "Authorization",
+                        "Bearer " + adminToken
+                    )
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                            "name": "Protected Category",
+                            "description": "Protected"
+                        }
+                        """)
+            )
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+        long categoryId =
+            objectMapper
+                .readTree(createResponse)
+                .get("id")
+                .asLong();
+
+        createdCategoryIds.add(categoryId);
+
+        String userToken = createAndLoginUser();
+
+        mockMvc.perform(
+                put("/api/categories/" + categoryId)
+                    .header(
+                        "Authorization",
+                        "Bearer " + userToken
+                    )
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                            "name": "User Updated",
+                            "description": "Should not be allowed"
+                        }
+                        """)
+            )
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void userDeleteCategory_shouldReturnForbidden()
+        throws Exception {
+
+        String adminToken = createAndLoginAdmin();
+
+        String createResponse = mockMvc.perform(
+                post("/api/categories")
+                    .header(
+                        "Authorization",
+                        "Bearer " + adminToken
+                    )
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                            "name": "Protected Delete Category",
+                            "description": "Protected"
+                        }
+                        """)
+            )
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+        long categoryId =
+            objectMapper
+                .readTree(createResponse)
+                .get("id")
+                .asLong();
+
+        createdCategoryIds.add(categoryId);
+
+        String userToken = createAndLoginUser();
+
+        mockMvc.perform(
+                delete("/api/categories/" + categoryId)
+                    .header(
+                        "Authorization",
+                        "Bearer " + userToken
+                    )
+            )
+            .andExpect(status().isForbidden());
     }
 
     private String createAndLoginUser()
@@ -469,7 +598,62 @@ class CategoryControllerIntegrationTest {
             "Tester"
         );
 
-        createdUserId = user.getId();
+        createdUserIds.add(user.getId());
+
+        String response = mockMvc.perform(
+                post("/api/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                            "email": "%s",
+                            "password": "%s"
+                        }
+                        """.formatted(
+                            email,
+                            PASSWORD
+                        ))
+            )
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+        JsonNode json =
+            objectMapper.readTree(response);
+
+        return json.get("token").asText();
+    }
+
+    private String createAndLoginAdmin()
+        throws Exception {
+
+        String email =
+            "category-admin-test-" +
+            UUID.randomUUID() +
+            "@example.com";
+
+        String passwordHash =
+            passwordEncoder.encode(PASSWORD);
+
+        User user = userService.register(
+            email,
+            passwordHash,
+            "Category",
+            "Admin"
+        );
+
+        Role adminRole =
+            roleRepository.findByName(RoleName.ADMIN)
+                .orElseThrow(() ->
+                    new IllegalStateException(
+                        "ADMIN role not found"
+                    )
+                );
+
+        user.getRoles().add(adminRole);
+        userRepository.save(user);
+
+        createdUserIds.add(user.getId());
 
         String response = mockMvc.perform(
                 post("/api/auth/login")
