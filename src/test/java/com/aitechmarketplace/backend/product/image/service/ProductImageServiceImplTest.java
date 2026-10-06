@@ -1,5 +1,6 @@
 package com.aitechmarketplace.backend.product.image.service;
 
+import com.aitechmarketplace.backend.common.exception.BadRequestException;
 import com.aitechmarketplace.backend.common.exception.ForbiddenException;
 import com.aitechmarketplace.backend.common.exception.NotFoundException;
 import com.aitechmarketplace.backend.product.entity.Product;
@@ -222,9 +223,9 @@ class ProductImageServiceImplTest {
         when(productRepository.findById(1L))
                 .thenReturn(Optional.of(product));
 
-        IllegalArgumentException exception =
+        BadRequestException exception =
                 assertThrows(
-                        IllegalArgumentException.class,
+                        BadRequestException.class,
                         () -> service.upload(
                                 1L,
                                 10L,
@@ -261,9 +262,9 @@ class ProductImageServiceImplTest {
         when(productRepository.findById(1L))
                 .thenReturn(Optional.of(product));
 
-        IllegalArgumentException exception =
+        BadRequestException exception =
                 assertThrows(
-                        IllegalArgumentException.class,
+                        BadRequestException.class,
                         () -> service.upload(
                                 1L,
                                 10L,
@@ -300,9 +301,9 @@ class ProductImageServiceImplTest {
         when(productRepository.findById(1L))
                 .thenReturn(Optional.of(product));
 
-        IllegalArgumentException exception =
+        BadRequestException exception =
                 assertThrows(
-                        IllegalArgumentException.class,
+                        BadRequestException.class,
                         () -> service.upload(
                                 1L,
                                 10L,
