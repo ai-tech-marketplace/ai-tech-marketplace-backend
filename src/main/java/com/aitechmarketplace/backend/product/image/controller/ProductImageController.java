@@ -4,7 +4,12 @@ import com.aitechmarketplace.backend.product.image.dto.ProductImageResponse;
 import com.aitechmarketplace.backend.product.image.entity.ProductImage;
 import com.aitechmarketplace.backend.product.image.service.ProductImageService;
 import jakarta.validation.constraints.NotNull;
+import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -73,6 +78,29 @@ public class ProductImageController {
                 userId,
                 isAdmin
         );
+    }
+
+    @GetMapping("/{imageId}/content")
+    public ResponseEntity<byte[]> download(
+            @PathVariable Long productId,
+            @PathVariable Long imageId
+    ) {
+        ResponseBytes<GetObjectResponse> object =
+                productImageService.download(
+                        productId,
+                        imageId
+                );
+
+        GetObjectResponse response = object.response();
+
+        MediaType mediaType = MediaType.parseMediaType(
+                response.contentType()
+        );
+
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .contentLength(response.contentLength())
+                .body(object.asByteArray());
     }
 
     private boolean isAdmin(Authentication authentication) {

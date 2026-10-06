@@ -1,6 +1,10 @@
 package com.aitechmarketplace.backend.product.image.service;
 
 import com.aitechmarketplace.backend.product.image.entity.ProductImage;
+
+import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -23,4 +27,9 @@ public interface ProductImageService {
             Long userId,
             boolean isAdmin
     );
+
+    ResponseBytes<GetObjectResponse> download(
+        Long productId,
+        Long imageId
+);
 }

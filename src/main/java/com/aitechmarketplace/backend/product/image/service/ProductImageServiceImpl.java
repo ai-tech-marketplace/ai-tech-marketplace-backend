@@ -7,6 +7,10 @@ import com.aitechmarketplace.backend.product.image.entity.ProductImage;
 import com.aitechmarketplace.backend.product.image.repository.ProductImageRepository;
 import com.aitechmarketplace.backend.product.repository.ProductRepository;
 import com.aitechmarketplace.backend.storage.service.S3StorageService;
+
+import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -133,6 +137,26 @@ public class ProductImageServiceImpl implements ProductImageService {
 
         productImageRepository.delete(image);
     }
+
+    @Override
+@Transactional(readOnly = true)
+public ResponseBytes<GetObjectResponse> download(
+        Long productId,
+        Long imageId
+) {
+    if (!productRepository.existsById(productId)) {
+        throw new NotFoundException("Product not found");
+    }
+
+    ProductImage image = productImageRepository
+            .findByIdAndProductId(imageId, productId)
+            .orElseThrow(() ->
+                    new NotFoundException(
+                            "Product image not found"
+                    ));
+
+    return storageService.download(image.getObjectKey());
+}
 
     private void checkOwnership(
             Product product,
