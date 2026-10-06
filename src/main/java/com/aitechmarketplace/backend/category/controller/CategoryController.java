@@ -7,6 +7,7 @@ import com.aitechmarketplace.backend.category.entity.Category;
 import com.aitechmarketplace.backend.category.service.CategoryService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,6 +25,7 @@ public class CategoryController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
     public CategoryResponse create(
         @Valid @RequestBody CategoryCreateRequest request
@@ -59,6 +61,7 @@ public class CategoryController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public CategoryResponse update(
         @PathVariable Long id,
         @Valid @RequestBody CategoryUpdateRequest request
@@ -73,6 +76,7 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deactivate(
         @PathVariable Long id
