@@ -1,10 +1,14 @@
 package com.aitechmarketplace.backend.product.service;
 
+import com.aitechmarketplace.backend.product.dto.ProductPageResponse;
+import com.aitechmarketplace.backend.product.dto.ProductSearchRequest;
 import com.aitechmarketplace.backend.product.entity.Product;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.data.domain.Pageable;
 
 public interface ProductService {
 
@@ -32,6 +36,11 @@ public interface ProductService {
             BigDecimal price,
             Integer stockQuantity,
             List<Long> categoryIds);
+
+        ProductPageResponse search(
+        ProductSearchRequest request,
+        Pageable pageable
+        );
 
     void deactivate(
             Long productId,

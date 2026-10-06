@@ -1,5 +1,7 @@
 package com.aitechmarketplace.backend.product.controller;
 
+import com.aitechmarketplace.backend.category.entity.Category;
+import com.aitechmarketplace.backend.category.service.CategoryService;
 import com.aitechmarketplace.backend.product.repository.ProductRepository;
 import com.aitechmarketplace.backend.user.entity.User;
 import com.aitechmarketplace.backend.user.repository.UserRepository;
@@ -32,365 +34,868 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class ProductControllerIntegrationTest {
 
-    private static final String PASSWORD = "Password123!";
+private static final String PASSWORD = "Password123!";
 
-    @Autowired
-    private MockMvc mockMvc;
+@Autowired
+private MockMvc mockMvc;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Autowired
-    private UserService userService;
+@Autowired
+private UserService userService;
 
-    @Autowired
-    private UserRepository userRepository;
+@Autowired
+private UserRepository userRepository;
 
-    @Autowired
-    private ProductRepository productRepository;
+@Autowired
+private ProductRepository productRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+@Autowired
+private CategoryService categoryService;
 
-    private final List<Long> createdUserIds = new ArrayList<>();
-    private final List<Long> createdProductIds = new ArrayList<>();
+@Autowired
+private PasswordEncoder passwordEncoder;
 
-    @AfterEach
-    void cleanup() {
-        createdProductIds.forEach(id ->
-            productRepository.findById(id)
-                .ifPresent(productRepository::delete)
+private final List<Long> createdUserIds = new ArrayList<>();
+private final List<Long> createdProductIds = new ArrayList<>();
+private final List<Long> createdCategoryIds = new ArrayList<>();
+
+@AfterEach
+void cleanup() {
+    createdProductIds.forEach(id ->
+        productRepository.findById(id)
+            .ifPresent(productRepository::delete)
+    );
+
+    createdCategoryIds.forEach(id -> {
+        try {
+            categoryService.deactivate(id);
+        } catch (Exception ignored) {
+            // Category may already have been removed.
+        }
+    });
+
+    createdUserIds.forEach(id -> {
+        if (userRepository.existsById(id)) {
+            userRepository.deleteById(id);
+        }
+    });
+}
+
+@Test
+void productCrud_shouldWorkForOwner() throws Exception {
+    User seller = createUser();
+
+    String token = login(seller.getEmail());
+
+    String createResponse = mockMvc.perform(
+            post("/api/products")
+                .header(
+                    "Authorization",
+                    "Bearer " + token
+                )
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "name": "MacBook Pro",
+                        "description": "M4 MacBook Pro",
+                        "price": 35000000.00,
+                        "stockQuantity": 5
+                    }
+                    """)
+        )
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.sellerId", is(seller.getId().intValue())))
+        .andExpect(jsonPath("$.sellerEmail", is(seller.getEmail())))
+        .andExpect(jsonPath("$.name", is("MacBook Pro")))
+        .andExpect(jsonPath("$.description", is("M4 MacBook Pro")))
+        .andExpect(jsonPath("$.price", is(35000000.00)))
+        .andExpect(jsonPath("$.stockQuantity", is(5)))
+        .andExpect(jsonPath("$.active", is(true)))
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+
+    JsonNode createJson =
+        objectMapper.readTree(createResponse);
+
+    long productId =
+        createJson.get("id").asLong();
+
+    createdProductIds.add(productId);
+
+    mockMvc.perform(
+            get("/api/products/" + productId)
+                .header(
+                    "Authorization",
+                    "Bearer " + token
+                )
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id", is((int) productId)))
+        .andExpect(jsonPath("$.name", is("MacBook Pro")));
+
+    mockMvc.perform(
+            get("/api/products/my")
+                .header(
+                    "Authorization",
+                    "Bearer " + token
+                )
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$", hasSize(1)))
+        .andExpect(jsonPath("$[0].id", is((int) productId)));
+
+    mockMvc.perform(
+            put("/api/products/" + productId)
+                .header(
+                    "Authorization",
+                    "Bearer " + token
+                )
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "name": "MacBook Pro Updated",
+                        "description": "Updated description",
+                        "price": 36000000.00,
+                        "stockQuantity": 10
+                    }
+                    """)
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.name", is("MacBook Pro Updated")))
+        .andExpect(jsonPath("$.description", is("Updated description")))
+        .andExpect(jsonPath("$.price", is(36000000.00)))
+        .andExpect(jsonPath("$.stockQuantity", is(10)));
+
+    mockMvc.perform(
+            delete("/api/products/" + productId)
+                .header(
+                    "Authorization",
+                    "Bearer " + token
+                )
+        )
+        .andExpect(status().isNoContent());
+
+    mockMvc.perform(
+            get("/api/products/" + productId)
+                .header(
+                    "Authorization",
+                    "Bearer " + token
+                )
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.active", is(false)));
+}
+
+@Test
+void createWithoutToken_shouldReturnUnauthorized()
+    throws Exception {
+
+    mockMvc.perform(
+            post("/api/products")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "name": "MacBook Pro",
+                        "description": "M4 MacBook Pro",
+                        "price": 35000000.00,
+                        "stockQuantity": 5
+                    }
+                    """)
+        )
+        .andExpect(status().isUnauthorized());
+}
+
+@Test
+void createWithInvalidRequest_shouldReturnBadRequest()
+    throws Exception {
+
+    User seller = createUser();
+
+    String token = login(seller.getEmail());
+
+    mockMvc.perform(
+            post("/api/products")
+                .header(
+                    "Authorization",
+                    "Bearer " + token
+                )
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "name": "",
+                        "description": "Invalid product",
+                        "price": -100,
+                        "stockQuantity": -1
+                    }
+                    """)
+        )
+        .andExpect(status().isBadRequest());
+}
+
+@Test
+void updateProductOwnedByAnotherUser_shouldReturnForbidden()
+    throws Exception {
+
+    User owner = createUser();
+    User anotherUser = createUser();
+
+    String ownerToken = login(owner.getEmail());
+    String anotherUserToken = login(anotherUser.getEmail());
+
+    String createResponse = mockMvc.perform(
+            post("/api/products")
+                .header(
+                    "Authorization",
+                    "Bearer " + ownerToken
+                )
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "name": "Owner Product",
+                        "description": "Owner product",
+                        "price": 1000000.00,
+                        "stockQuantity": 2
+                    }
+                    """)
+        )
+        .andExpect(status().isCreated())
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+
+    long productId =
+        objectMapper
+            .readTree(createResponse)
+            .get("id")
+            .asLong();
+
+    createdProductIds.add(productId);
+
+    mockMvc.perform(
+            put("/api/products/" + productId)
+                .header(
+                    "Authorization",
+                    "Bearer " + anotherUserToken
+                )
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "name": "Hacked Product",
+                        "description": "Should not work",
+                        "price": 9999999.00,
+                        "stockQuantity": 99
+                    }
+                    """)
+        )
+        .andExpect(status().isForbidden());
+}
+
+@Test
+void deleteProductOwnedByAnotherUser_shouldReturnForbidden()
+    throws Exception {
+
+    User owner = createUser();
+    User anotherUser = createUser();
+
+    String ownerToken = login(owner.getEmail());
+    String anotherUserToken = login(anotherUser.getEmail());
+
+    String createResponse = mockMvc.perform(
+            post("/api/products")
+                .header(
+                    "Authorization",
+                    "Bearer " + ownerToken
+                )
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "name": "Owner Product",
+                        "description": "Owner product",
+                        "price": 1000000.00,
+                        "stockQuantity": 2
+                    }
+                    """)
+        )
+        .andExpect(status().isCreated())
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+
+    long productId =
+        objectMapper
+            .readTree(createResponse)
+            .get("id")
+            .asLong();
+
+    createdProductIds.add(productId);
+
+    mockMvc.perform(
+            delete("/api/products/" + productId)
+                .header(
+                    "Authorization",
+                    "Bearer " + anotherUserToken
+                )
+        )
+        .andExpect(status().isForbidden());
+}
+
+@Test
+void findById_whenProductDoesNotExist_shouldReturnNotFound()
+    throws Exception {
+
+    User seller = createUser();
+
+    String token = login(seller.getEmail());
+
+    mockMvc.perform(
+            get("/api/products/999999999")
+                .header(
+                    "Authorization",
+                    "Bearer " + token
+                )
+        )
+        .andExpect(status().isNotFound());
+}
+
+@Test
+void search_shouldReturnPaginatedProducts()
+    throws Exception {
+
+    User seller = createUser();
+    String token = login(seller.getEmail());
+
+    createProduct(
+        token,
+        "iPhone 17",
+        999.00,
+        10
+    );
+
+    createProduct(
+        token,
+        "MacBook Pro",
+        1999.00,
+        5
+    );
+
+    createProduct(
+        token,
+        "AirPods Pro",
+        299.00,
+        20
+    );
+
+    mockMvc.perform(
+            get("/api/products")
+                .param("page", "0")
+                .param("size", "2")
+                .header(
+                    "Authorization",
+                    "Bearer " + token
+                )
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content", hasSize(2)))
+        .andExpect(jsonPath("$.page", is(0)))
+        .andExpect(jsonPath("$.size", is(2)))
+        .andExpect(jsonPath("$.totalElements", is(3)))
+        .andExpect(jsonPath("$.totalPages", is(2)));
+}
+
+@Test
+void searchByKeyword_shouldReturnMatchingProducts()
+    throws Exception {
+
+    User seller = createUser();
+    String token = login(seller.getEmail());
+
+    createProduct(
+        token,
+        "iPhone 17 Pro",
+        1299.00,
+        10
+    );
+
+    createProduct(
+        token,
+        "MacBook Pro",
+        1999.00,
+        5
+    );
+
+    mockMvc.perform(
+            get("/api/products")
+                .param("keyword", "iphone")
+                .header(
+                    "Authorization",
+                    "Bearer " + token
+                )
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(
+            jsonPath(
+                "$.content[0].name",
+                is("iPhone 17 Pro")
+            )
+        )
+        .andExpect(jsonPath("$.totalElements", is(1)));
+}
+
+@Test
+void searchByCategory_shouldReturnMatchingProducts()
+    throws Exception {
+
+    User seller = createUser();
+    String token = login(seller.getEmail());
+
+    Category electronics =
+        createCategory(
+            "Electronics " + UUID.randomUUID()
         );
 
-        createdUserIds.forEach(id -> {
-            if (userRepository.existsById(id)) {
-                userRepository.deleteById(id);
-            }
-        });
-    }
-
-    @Test
-    void productCrud_shouldWorkForOwner() throws Exception {
-        User seller = createUser();
-
-        String token = login(seller.getEmail());
-
-        String createResponse = mockMvc.perform(
-                post("/api/products")
-                    .header(
-                        "Authorization",
-                        "Bearer " + token
-                    )
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {
-                            "name": "MacBook Pro",
-                            "description": "M4 MacBook Pro",
-                            "price": 35000000.00,
-                            "stockQuantity": 5
-                        }
-                        """)
-            )
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.sellerId", is(seller.getId().intValue())))
-            .andExpect(jsonPath("$.sellerEmail", is(seller.getEmail())))
-            .andExpect(jsonPath("$.name", is("MacBook Pro")))
-            .andExpect(jsonPath("$.description", is("M4 MacBook Pro")))
-            .andExpect(jsonPath("$.price", is(35000000.00)))
-            .andExpect(jsonPath("$.stockQuantity", is(5)))
-            .andExpect(jsonPath("$.active", is(true)))
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
-
-        JsonNode createJson =
-            objectMapper.readTree(createResponse);
-
-        long productId =
-            createJson.get("id").asLong();
-
-        createdProductIds.add(productId);
-
-        mockMvc.perform(
-                get("/api/products/" + productId)
-                    .header(
-                        "Authorization",
-                        "Bearer " + token
-                    )
-            )
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.id", is((int) productId)))
-            .andExpect(jsonPath("$.name", is("MacBook Pro")));
-
-        mockMvc.perform(
-                get("/api/products/my")
-                    .header(
-                        "Authorization",
-                        "Bearer " + token
-                    )
-            )
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$", hasSize(1)))
-            .andExpect(jsonPath("$[0].id", is((int) productId)));
-
-        mockMvc.perform(
-                put("/api/products/" + productId)
-                    .header(
-                        "Authorization",
-                        "Bearer " + token
-                    )
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {
-                            "name": "MacBook Pro Updated",
-                            "description": "Updated description",
-                            "price": 36000000.00,
-                            "stockQuantity": 10
-                        }
-                        """)
-            )
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.name", is("MacBook Pro Updated")))
-            .andExpect(jsonPath("$.description", is("Updated description")))
-            .andExpect(jsonPath("$.price", is(36000000.00)))
-            .andExpect(jsonPath("$.stockQuantity", is(10)));
-
-        mockMvc.perform(
-                delete("/api/products/" + productId)
-                    .header(
-                        "Authorization",
-                        "Bearer " + token
-                    )
-            )
-            .andExpect(status().isNoContent());
-
-        mockMvc.perform(
-                get("/api/products/" + productId)
-                    .header(
-                        "Authorization",
-                        "Bearer " + token
-                    )
-            )
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.active", is(false)));
-    }
-
-    @Test
-    void createWithoutToken_shouldReturnUnauthorized()
-        throws Exception {
-
-        mockMvc.perform(
-                post("/api/products")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {
-                            "name": "MacBook Pro",
-                            "description": "M4 MacBook Pro",
-                            "price": 35000000.00,
-                            "stockQuantity": 5
-                        }
-                        """)
-            )
-            .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void createWithInvalidRequest_shouldReturnBadRequest()
-        throws Exception {
-
-        User seller = createUser();
-
-        String token = login(seller.getEmail());
-
-        mockMvc.perform(
-                post("/api/products")
-                    .header(
-                        "Authorization",
-                        "Bearer " + token
-                    )
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {
-                            "name": "",
-                            "description": "Invalid product",
-                            "price": -100,
-                            "stockQuantity": -1
-                        }
-                        """)
-            )
-            .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void updateProductOwnedByAnotherUser_shouldReturnForbidden()
-        throws Exception {
-
-        User owner = createUser();
-        User anotherUser = createUser();
-
-        String ownerToken = login(owner.getEmail());
-        String anotherUserToken = login(anotherUser.getEmail());
-
-        String createResponse = mockMvc.perform(
-                post("/api/products")
-                    .header(
-                        "Authorization",
-                        "Bearer " + ownerToken
-                    )
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {
-                            "name": "Owner Product",
-                            "description": "Owner product",
-                            "price": 1000000.00,
-                            "stockQuantity": 2
-                        }
-                        """)
-            )
-            .andExpect(status().isCreated())
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
-
-        long productId =
-            objectMapper
-                .readTree(createResponse)
-                .get("id")
-                .asLong();
-
-        createdProductIds.add(productId);
-
-        mockMvc.perform(
-                put("/api/products/" + productId)
-                    .header(
-                        "Authorization",
-                        "Bearer " + anotherUserToken
-                    )
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {
-                            "name": "Hacked Product",
-                            "description": "Should not work",
-                            "price": 9999999.00,
-                            "stockQuantity": 99
-                        }
-                        """)
-            )
-            .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void deleteProductOwnedByAnotherUser_shouldReturnForbidden()
-        throws Exception {
-
-        User owner = createUser();
-        User anotherUser = createUser();
-
-        String ownerToken = login(owner.getEmail());
-        String anotherUserToken = login(anotherUser.getEmail());
-
-        String createResponse = mockMvc.perform(
-                post("/api/products")
-                    .header(
-                        "Authorization",
-                        "Bearer " + ownerToken
-                    )
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {
-                            "name": "Owner Product",
-                            "description": "Owner product",
-                            "price": 1000000.00,
-                            "stockQuantity": 2
-                        }
-                        """)
-            )
-            .andExpect(status().isCreated())
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
-
-        long productId =
-            objectMapper
-                .readTree(createResponse)
-                .get("id")
-                .asLong();
-
-        createdProductIds.add(productId);
-
-        mockMvc.perform(
-                delete("/api/products/" + productId)
-                    .header(
-                        "Authorization",
-                        "Bearer " + anotherUserToken
-                    )
-            )
-            .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void findById_whenProductDoesNotExist_shouldReturnNotFound()
-        throws Exception {
-
-        User seller = createUser();
-
-        String token = login(seller.getEmail());
-
-        mockMvc.perform(
-                get("/api/products/999999999")
-                    .header(
-                        "Authorization",
-                        "Bearer " + token
-                    )
-            )
-            .andExpect(status().isNotFound());
-    }
-
-    private User createUser() {
-
-        String email =
-            "product-test-" +
-            UUID.randomUUID() +
-            "@example.com";
-
-        String passwordHash =
-            passwordEncoder.encode(PASSWORD);
-
-        User user = userService.register(
-            email,
-            passwordHash,
-            "Product",
-            "Tester"
+    Category fashion =
+        createCategory(
+            "Fashion " + UUID.randomUUID()
         );
 
-        createdUserIds.add(user.getId());
+    createProduct(
+        token,
+        "iPhone 17",
+        1299.00,
+        10,
+        electronics.getId()
+    );
 
-        return user;
-    }
+    createProduct(
+        token,
+        "T-Shirt",
+        29.00,
+        20,
+        fashion.getId()
+    );
 
-    private String login(String email)
-        throws Exception {
-
-        String response = mockMvc.perform(
-                post("/api/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                        {
-                            "email": "%s",
-                            "password": "%s"
-                        }
-                        """.formatted(
-                            email,
-                            PASSWORD
-                        ))
+    mockMvc.perform(
+            get("/api/products")
+                .param(
+                    "categoryId",
+                    electronics.getId().toString()
+                )
+                .header(
+                    "Authorization",
+                    "Bearer " + token
+                )
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(
+            jsonPath(
+                "$.content[0].name",
+                is("iPhone 17")
             )
-            .andExpect(status().isOk())
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
+        )
+        .andExpect(jsonPath("$.totalElements", is(1)));
+}
 
-        JsonNode json =
-            objectMapper.readTree(response);
+@Test
+void searchByCategory_whenProductHasMultipleCategories_shouldNotReturnDuplicates()
+throws Exception {
 
-        return json.get("token").asText();
-    }
+User seller = createUser();
+String token = login(seller.getEmail());
+
+Category electronics =
+    createCategory(
+        "Electronics " + UUID.randomUUID()
+    );
+
+Category apple =
+    createCategory(
+        "Apple " + UUID.randomUUID()
+    );
+
+Category fashion =
+    createCategory(
+        "Fashion " + UUID.randomUUID()
+    );
+
+// Product A belongs to TWO categories:
+// Electronics + Apple
+String productAResponse = mockMvc.perform(
+        post("/api/products")
+            .header(
+                "Authorization",
+                "Bearer " + token
+            )
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                    "name": "iPhone 17 Pro",
+                    "description": "Apple smartphone",
+                    "price": 1299.00,
+                    "stockQuantity": 10,
+                    "categoryIds": [%d, %d]
+                }
+                """.formatted(
+                    electronics.getId(),
+                    apple.getId()
+                ))
+    )
+    .andExpect(status().isCreated())
+    .andReturn()
+    .getResponse()
+    .getContentAsString();
+
+long productAId =
+    objectMapper
+        .readTree(productAResponse)
+        .get("id")
+        .asLong();
+
+createdProductIds.add(productAId);
+
+// Product B belongs to Electronics only.
+createProduct(
+    token,
+    "MacBook Pro",
+    1999.00,
+    5,
+    electronics.getId()
+);
+
+// Product C belongs to Fashion only.
+createProduct(
+    token,
+    "T-Shirt",
+    29.00,
+    20,
+    fashion.getId()
+);
+
+// Search by Electronics.
+// Product A and Product B should be returned exactly once.
+mockMvc.perform(
+        get("/api/products")
+            .param(
+                "categoryId",
+                electronics.getId().toString()
+            )
+            .header(
+                "Authorization",
+                "Bearer " + token
+            )
+    )
+    .andExpect(status().isOk())
+    .andExpect(jsonPath("$.content", hasSize(2)))
+    .andExpect(jsonPath("$.totalElements", is(2)))
+    .andExpect(
+        jsonPath(
+            "$.content[0].name",
+            is("MacBook Pro")
+        )
+    )
+    .andExpect(
+        jsonPath(
+            "$.content[1].name",
+            is("iPhone 17 Pro")
+        )
+    );
+
+}
+
+@Test
+void searchByPriceRange_shouldReturnMatchingProducts()
+    throws Exception {
+
+    User seller = createUser();
+    String token = login(seller.getEmail());
+
+    createProduct(
+        token,
+        "Cheap Product",
+        50.00,
+        10
+    );
+
+    createProduct(
+        token,
+        "Medium Product",
+        500.00,
+        10
+    );
+
+    createProduct(
+        token,
+        "Expensive Product",
+        2000.00,
+        10
+    );
+
+    mockMvc.perform(
+            get("/api/products")
+                .param("minPrice", "100")
+                .param("maxPrice", "1000")
+                .header(
+                    "Authorization",
+                    "Bearer " + token
+                )
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(
+            jsonPath(
+                "$.content[0].name",
+                is("Medium Product")
+            )
+        )
+        .andExpect(jsonPath("$.totalElements", is(1)));
+}
+
+@Test
+void searchWithMultipleFilters_shouldReturnMatchingProducts()
+    throws Exception {
+
+    User seller = createUser();
+    String token = login(seller.getEmail());
+
+    Category electronics =
+        createCategory(
+            "Electronics " + UUID.randomUUID()
+        );
+
+    createProduct(
+        token,
+        "iPhone 17 Pro",
+        1299.00,
+        10,
+        electronics.getId()
+    );
+
+    createProduct(
+        token,
+        "iPhone 17 Case",
+        29.00,
+        50,
+        electronics.getId()
+    );
+
+    createProduct(
+        token,
+        "MacBook Pro",
+        1999.00,
+        5
+    );
+
+    mockMvc.perform(
+            get("/api/products")
+                .param("keyword", "iphone")
+                .param(
+                    "categoryId",
+                    electronics.getId().toString()
+                )
+                .param("minPrice", "1000")
+                .param("maxPrice", "1500")
+                .param("page", "0")
+                .param("size", "20")
+                .header(
+                    "Authorization",
+                    "Bearer " + token
+                )
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(
+            jsonPath(
+                "$.content[0].name",
+                is("iPhone 17 Pro")
+            )
+        )
+        .andExpect(jsonPath("$.totalElements", is(1)));
+}
+
+@Test
+void search_shouldExcludeInactiveProducts()
+    throws Exception {
+
+    User seller = createUser();
+    String token = login(seller.getEmail());
+
+    long activeProductId =
+        createProduct(
+            token,
+            "Active Product",
+            100.00,
+            10
+        );
+
+    long inactiveProductId =
+        createProduct(
+            token,
+            "Inactive Product",
+            200.00,
+            10
+        );
+
+    mockMvc.perform(
+            delete(
+                "/api/products/" +
+                inactiveProductId
+            )
+                .header(
+                    "Authorization",
+                    "Bearer " + token
+                )
+        )
+        .andExpect(status().isNoContent());
+
+    mockMvc.perform(
+            get("/api/products")
+                .header(
+                    "Authorization",
+                    "Bearer " + token
+                )
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(
+            jsonPath(
+                "$.content[0].id",
+                is((int) activeProductId)
+            )
+        )
+        .andExpect(jsonPath("$.totalElements", is(1)));
+}
+
+private long createProduct(
+    String token,
+    String name,
+    double price,
+    int stockQuantity
+) throws Exception {
+
+    return createProduct(
+        token,
+        name,
+        price,
+        stockQuantity,
+        null
+    );
+}
+
+private long createProduct(
+    String token,
+    String name,
+    double price,
+    int stockQuantity,
+    Long categoryId
+) throws Exception {
+
+    String categoryJson =
+        categoryId == null
+            ? ""
+            : """
+                ,"categoryIds": [%d]
+                """.formatted(categoryId);
+
+    String response = mockMvc.perform(
+            post("/api/products")
+                .header(
+                    "Authorization",
+                    "Bearer " + token
+                )
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "name": "%s",
+                        "description": "Test product",
+                        "price": %s,
+                        "stockQuantity": %d%s
+                    }
+                    """.formatted(
+                        name,
+                        price,
+                        stockQuantity,
+                        categoryJson
+                    ))
+        )
+        .andExpect(status().isCreated())
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+
+    long productId =
+        objectMapper
+            .readTree(response)
+            .get("id")
+            .asLong();
+
+    createdProductIds.add(productId);
+
+    return productId;
+}
+
+private Category createCategory(String name) {
+
+    Category category =
+        categoryService.create(
+            name,
+            "Test category"
+        );
+
+    createdCategoryIds.add(category.getId());
+
+    return category;
+}
+
+private User createUser() {
+
+    String email =
+        "product-test-" +
+        UUID.randomUUID() +
+        "@example.com";
+
+    String passwordHash =
+        passwordEncoder.encode(PASSWORD);
+
+    User user = userService.register(
+        email,
+        passwordHash,
+        "Product",
+        "Tester"
+    );
+
+    createdUserIds.add(user.getId());
+
+    return user;
+}
+
+private String login(String email)
+    throws Exception {
+
+    String response = mockMvc.perform(
+            post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "email": "%s",
+                        "password": "%s"
+                    }
+                    """.formatted(
+                        email,
+                        PASSWORD
+                    ))
+        )
+        .andExpect(status().isOk())
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+
+    JsonNode json =
+        objectMapper.readTree(response);
+
+    return json.get("token").asText();
+}
+
 }
