@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public record ProductUpdateRequest(
 
@@ -35,6 +36,8 @@ public record ProductUpdateRequest(
         value = 0,
         message = "Stock quantity must be greater than or equal to 0"
     )
-    Integer stockQuantity
+    Integer stockQuantity,
+
+    List<Long> categoryIds
 ) {
 }

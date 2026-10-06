@@ -9,12 +9,12 @@ import java.util.Optional;
 public interface ProductService {
 
     Product create(
-        Long sellerId,
-        String name,
-        String description,
-        BigDecimal price,
-        Integer stockQuantity
-    );
+            Long sellerId,
+            String name,
+            String description,
+            BigDecimal price,
+            Integer stockQuantity,
+            List<Long> categoryIds);
 
     Optional<Product> findById(Long id);
 
@@ -22,17 +22,19 @@ public interface ProductService {
 
     List<Product> findBySellerId(Long sellerId);
 
+    List<Product> findActiveProductsBySellerId(Long sellerId);
+
     Product update(
-        Long productId,
-        Long sellerId,
-        String name,
-        String description,
-        BigDecimal price,
-        Integer stockQuantity
-    );
+            Long productId,
+            Long sellerId,
+            String name,
+            String description,
+            BigDecimal price,
+            Integer stockQuantity,
+            List<Long> categoryIds);
 
     void deactivate(
-        Long productId,
-        Long sellerId
-    );
+            Long productId,
+            Long sellerId);
+
 }

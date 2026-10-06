@@ -1,5 +1,6 @@
 package com.aitechmarketplace.backend.product.controller;
 
+import com.aitechmarketplace.backend.common.exception.NotFoundException;
 import com.aitechmarketplace.backend.product.dto.ProductCreateRequest;
 import com.aitechmarketplace.backend.product.dto.ProductResponse;
 import com.aitechmarketplace.backend.product.dto.ProductUpdateRequest;
@@ -17,8 +18,7 @@ public class ProductController {
 
     private final ProductService productService;
 
-    public ProductController(
-            ProductService productService) {
+    public ProductController(ProductService productService) {
         this.productService = productService;
     }
 
@@ -46,12 +46,20 @@ public class ProductController {
                 .toList();
     }
 
+    @GetMapping("/my")
+    public List<ProductResponse> findMyProducts(
+            @RequestAttribute("userId") Long userId) {
+        return productService.findBySellerId(userId)
+                .stream()
+                .map(ProductResponse::from)
+                .toList();
+    }
+
     @GetMapping("/{id}")
     public ProductResponse findById(
             @PathVariable Long id) {
         Product product = productService.findById(id)
-                .orElseThrow(() -> new com.aitechmarketplace.backend.common.exception.NotFoundException(
-                        "Product not found"));
+                .orElseThrow(() -> new NotFoundException("Product not found"));
 
         return ProductResponse.from(product);
     }
@@ -87,9 +95,7 @@ public class ProductController {
     public void deactivate(
             @PathVariable Long id,
             @RequestAttribute("userId") Long userId) {
-        productService.deactivate(
-                id,
-                userId);
+        productService.deactivate(id, userId);
     }
 
 }
