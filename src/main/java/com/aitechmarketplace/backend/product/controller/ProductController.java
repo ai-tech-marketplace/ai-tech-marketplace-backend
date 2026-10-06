@@ -5,6 +5,7 @@ import com.aitechmarketplace.backend.product.dto.ProductCreateRequest;
 import com.aitechmarketplace.backend.product.dto.ProductPageResponse;
 import com.aitechmarketplace.backend.product.dto.ProductResponse;
 import com.aitechmarketplace.backend.product.dto.ProductSearchRequest;
+import com.aitechmarketplace.backend.product.dto.ProductStockUpdateRequest;
 import com.aitechmarketplace.backend.product.dto.ProductUpdateRequest;
 import com.aitechmarketplace.backend.product.entity.Product;
 import com.aitechmarketplace.backend.product.service.ProductService;
@@ -150,6 +151,32 @@ public class ProductController {
 
         return ProductResponse.from(product);
     }
+
+    @PatchMapping("/{id}/stock")
+public ProductResponse updateStock(
+        @PathVariable Long id,
+        @RequestAttribute("userId") Long userId,
+        Authentication authentication,
+        @Valid @RequestBody ProductStockUpdateRequest request
+) {
+
+    boolean isAdmin =
+            authentication.getAuthorities()
+                    .stream()
+                    .anyMatch(authority ->
+                            authority.getAuthority()
+                                    .equals("ROLE_ADMIN")
+                    );
+
+    Product product = productService.updateStock(
+            id,
+            userId,
+            isAdmin,
+            request.stockQuantity()
+    );
+
+    return ProductResponse.from(product);
+}
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

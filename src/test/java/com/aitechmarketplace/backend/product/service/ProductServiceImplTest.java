@@ -163,4 +163,81 @@ class ProductServiceImplTest {
         verify(productRepository, never())
                 .save(any(Product.class));
     }
+
+    @Test
+void updateStock_whenUserOwnsProduct_shouldUpdateStock() {
+    User owner = new User();
+    owner.setActive(true);
+
+    try {
+        var idField = User.class.getDeclaredField("id");
+        idField.setAccessible(true);
+        idField.set(owner, 1L);
+    } catch (Exception exception) {
+        throw new RuntimeException(exception);
+    }
+
+    Product product = new Product();
+    product.setSeller(owner);
+    product.setStockQuantity(5);
+
+    when(productRepository.findById(1L))
+            .thenReturn(Optional.of(product));
+
+    when(productRepository.save(product))
+            .thenReturn(product);
+
+    Product result = productService.updateStock(
+            1L,
+            1L,
+            false,
+            20
+    );
+
+    assertEquals(product, result);
+    assertEquals(20, result.getStockQuantity());
+
+    verify(productRepository)
+            .findById(1L);
+
+    verify(productRepository)
+            .save(product);
+}
+
+@Test
+void updateStock_whenUserDoesNotOwnProduct_shouldBeRejected() {
+    User owner = new User();
+    owner.setActive(true);
+
+    try {
+        var idField = User.class.getDeclaredField("id");
+        idField.setAccessible(true);
+        idField.set(owner, 1L);
+    } catch (Exception exception) {
+        throw new RuntimeException(exception);
+    }
+
+    Product product = new Product();
+    product.setSeller(owner);
+    product.setStockQuantity(5);
+
+    when(productRepository.findById(1L))
+            .thenReturn(Optional.of(product));
+
+    ForbiddenException exception = assertThrows(
+            ForbiddenException.class,
+            () -> productService.updateStock(
+                    1L,
+                    999L,
+                    false,
+                    20
+            ));
+
+    assertEquals(
+            "You are not allowed to update stock for this product",
+            exception.getMessage());
+
+    verify(productRepository, never())
+            .save(any(Product.class));
+}
 }
