@@ -1,5 +1,6 @@
 package com.aitechmarketplace.backend.product.image.service;
 
+import com.aitechmarketplace.backend.common.exception.BadRequestException;
 import com.aitechmarketplace.backend.common.exception.ForbiddenException;
 import com.aitechmarketplace.backend.common.exception.NotFoundException;
 import com.aitechmarketplace.backend.product.entity.Product;
@@ -174,23 +175,21 @@ public ResponseBytes<GetObjectResponse> download(
     }
 
     private void validateFile(MultipartFile file) {
-
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Image file is required"
-            );
-        }
-
-        String contentType = file.getContentType();
-
-        if (contentType == null ||
-                !contentType.startsWith("image/")) {
-
-            throw new IllegalArgumentException(
-                    "Only image files are allowed"
-            );
-        }
+    if (file == null || file.isEmpty()) {
+        throw new BadRequestException(
+                "Image file is required"
+        );
     }
+
+    String contentType = file.getContentType();
+
+    if (contentType == null ||
+            !contentType.startsWith("image/")) {
+        throw new BadRequestException(
+                "Only image files are allowed"
+        );
+    }
+}
 
     private String extractExtension(String filename) {
 
