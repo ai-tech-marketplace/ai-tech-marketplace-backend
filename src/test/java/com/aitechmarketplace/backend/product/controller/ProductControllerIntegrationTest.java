@@ -28,6 +28,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -90,7 +91,8 @@ class ProductControllerIntegrationTest {
     }
 
     @Test
-    void productCrud_shouldWorkForOwner() throws Exception {
+    void productCrud_shouldWorkForOwner()
+        throws Exception {
 
         User seller = createUser();
 
@@ -476,6 +478,183 @@ class ProductControllerIntegrationTest {
                     is(10)
                 )
             );
+    }
+
+    @Test
+    void updateStockOwnedByUser_shouldReturnOk()
+        throws Exception {
+
+        User seller = createUser();
+
+        String token = login(seller.getEmail());
+
+        long productId = createProduct(
+            token,
+            "Stock Product",
+            1000.00,
+            5
+        );
+
+        mockMvc.perform(
+                patch("/api/products/{id}/stock", productId)
+                    .header(
+                        "Authorization",
+                        "Bearer " + token
+                    )
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                            "stockQuantity": 20
+                        }
+                        """)
+            )
+            .andExpect(status().isOk())
+            .andExpect(
+                jsonPath(
+                    "$.id",
+                    is((int) productId)
+                )
+            )
+            .andExpect(
+                jsonPath(
+                    "$.stockQuantity",
+                    is(20)
+                )
+            );
+    }
+
+    @Test
+    void updateStockOwnedByAnotherUser_shouldReturnForbidden()
+        throws Exception {
+
+        User owner = createUser();
+        User anotherUser = createUser();
+
+        String ownerToken = login(owner.getEmail());
+        String anotherUserToken =
+            login(anotherUser.getEmail());
+
+        long productId = createProduct(
+            ownerToken,
+            "Other User Stock Product",
+            1000.00,
+            5
+        );
+
+        mockMvc.perform(
+                patch("/api/products/{id}/stock", productId)
+                    .header(
+                        "Authorization",
+                        "Bearer " + anotherUserToken
+                    )
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                            "stockQuantity": 20
+                        }
+                        """)
+            )
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminUpdateStockOwnedByAnotherUser_shouldReturnOk()
+        throws Exception {
+
+        User owner = createUser();
+        User admin = createAdmin();
+
+        String ownerToken = login(owner.getEmail());
+        String adminToken = login(admin.getEmail());
+
+        long productId = createProduct(
+            ownerToken,
+            "Admin Stock Product",
+            1000.00,
+            5
+        );
+
+        mockMvc.perform(
+                patch("/api/products/{id}/stock", productId)
+                    .header(
+                        "Authorization",
+                        "Bearer " + adminToken
+                    )
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                            "stockQuantity": 50
+                        }
+                        """)
+            )
+            .andExpect(status().isOk())
+            .andExpect(
+                jsonPath(
+                    "$.id",
+                    is((int) productId)
+                )
+            )
+            .andExpect(
+                jsonPath(
+                    "$.stockQuantity",
+                    is(50)
+                )
+            );
+    }
+
+    @Test
+    void updateStockWithNegativeQuantity_shouldReturnBadRequest()
+        throws Exception {
+
+        User seller = createUser();
+
+        String token = login(seller.getEmail());
+
+        long productId = createProduct(
+            token,
+            "Negative Stock Product",
+            1000.00,
+            5
+        );
+
+        mockMvc.perform(
+                patch("/api/products/{id}/stock", productId)
+                    .header(
+                        "Authorization",
+                        "Bearer " + token
+                    )
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                            "stockQuantity": -1
+                        }
+                        """)
+            )
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateStockForMissingProduct_shouldReturnNotFound()
+        throws Exception {
+
+        User seller = createUser();
+
+        String token = login(seller.getEmail());
+
+        mockMvc.perform(
+                patch("/api/products/{id}/stock", 999999L)
+                    .header(
+                        "Authorization",
+                        "Bearer " + token
+                    )
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                            "stockQuantity": 20
+                        }
+                        """)
+            )
+            .andExpect(status().isNotFound());
     }
 
     @Test

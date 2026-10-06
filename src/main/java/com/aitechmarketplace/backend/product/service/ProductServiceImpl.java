@@ -233,4 +233,28 @@ public class ProductServiceImpl implements ProductService {
 
         return ProductPageResponse.from(result);
     }
+
+    @Override
+public Product updateStock(
+        Long productId,
+        Long userId,
+        boolean isAdmin,
+        Integer stockQuantity) {
+
+    Product product = productRepository.findById(productId)
+            .orElseThrow(() ->
+                    new NotFoundException("Product not found"));
+
+    if (!isAdmin &&
+            !product.getSeller().getId().equals(userId)) {
+
+        throw new ForbiddenException(
+                "You are not allowed to update stock for this product"
+        );
+    }
+
+    product.setStockQuantity(stockQuantity);
+
+    return productRepository.save(product);
+}
 }

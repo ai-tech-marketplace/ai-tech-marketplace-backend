@@ -50,4 +50,11 @@ public interface ProductService {
             ProductSearchRequest request,
             Pageable pageable
     );
+
+    Product updateStock(
+        Long productId,
+        Long userId,
+        boolean isAdmin,
+        Integer stockQuantity
+);
 }
