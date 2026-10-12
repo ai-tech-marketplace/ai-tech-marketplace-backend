@@ -17,6 +17,7 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
 
     List<CartItem> findByCartIdOrderByIdAsc(Long cartId);
 
+    @org.springframework.transaction.annotation.Transactional
     @Modifying
     @Query("DELETE FROM CartItem ci WHERE ci.cart.id = :cartId")
     void deleteByCartId(@Param("cartId") Long cartId);
