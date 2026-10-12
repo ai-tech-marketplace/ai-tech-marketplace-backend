@@ -21,5 +21,24 @@ services:
       timeout: 5s
       retries: 10
 
+  object-storage:
+    image: chrislusf/seaweedfs:latest
+    container_name: ai-tech-marketplace-object-storage
+    restart: unless-stopped
+
+    command: server -dir=/data -s3
+
+    environment:
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: ai-marketplace-secret
+      S3_BUCKET: products
+
+    ports:
+      - "8333:8333"
+
+    volumes:
+      - object_storage_data:/data
+
 volumes:
   postgres_data:
+  object_storage_data:
