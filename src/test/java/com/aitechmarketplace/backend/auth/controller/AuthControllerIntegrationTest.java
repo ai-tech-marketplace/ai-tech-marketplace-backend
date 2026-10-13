@@ -23,11 +23,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class AuthControllerIntegrationTest {
 
-    private static final String EMAIL =
-        "auth-integration@example.com";
-
-    private static final String PASSWORD =
-        "12345678";
+    private static final String EMAIL = "auth-integration@example.com";
+    private static final String PASSWORD = "12345678";
 
     @Autowired
     private MockMvc mockMvc;
@@ -46,18 +43,42 @@ class AuthControllerIntegrationTest {
         userRepository.findByEmail(EMAIL)
             .ifPresent(userRepository::delete);
 
+        userRepository.findByEmail("newuser@example.com")
+            .ifPresent(userRepository::delete);
+
         userService.register(
             EMAIL,
             passwordEncoder.encode(PASSWORD),
-            "Integration",
-            "Test"
+            "Integration Test",
+            "0901234567"
         );
+    }
+
+    @Test
+    void register_shouldCreateUser() throws Exception {
+        mockMvc.perform(
+                post("/api/v1/auth/register")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                            "email": "newuser@example.com",
+                            "password": "Password123!",
+                            "fullName": "New User",
+                            "phone": "0987654321"
+                        }
+                        """)
+            )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.success", is(true)))
+            .andExpect(jsonPath("$.data.email", is("newuser@example.com")))
+            .andExpect(jsonPath("$.data.fullName", is("New User")))
+            .andExpect(jsonPath("$.data.role", is("CUSTOMER")));
     }
 
     @Test
     void login_shouldReturnJwtToken() throws Exception {
         mockMvc.perform(
-                post("/api/auth/login")
+                post("/api/v1/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("""
                         {
@@ -67,18 +88,18 @@ class AuthControllerIntegrationTest {
                         """)
             )
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.token").isNotEmpty())
-            .andExpect(jsonPath("$.tokenType", is("Bearer")))
-            .andExpect(jsonPath("$.email", is(EMAIL)))
-            .andExpect(jsonPath("$.roles[0]", is("USER")));
+            .andExpect(jsonPath("$.success", is(true)))
+            .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
+            .andExpect(jsonPath("$.data.tokenType", is("Bearer")))
+            .andExpect(jsonPath("$.data.user.email", is(EMAIL)))
+            .andExpect(jsonPath("$.data.user.fullName", is("Integration Test")))
+            .andExpect(jsonPath("$.data.user.role", is("CUSTOMER")));
     }
 
-   @Test
-    void login_withWrongPassword_shouldBeRejected()
-        throws Exception {
-
+    @Test
+    void login_withWrongPassword_shouldBeRejected() throws Exception {
         mockMvc.perform(
-                post("/api/auth/login")
+                post("/api/v1/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("""
                         {
@@ -87,25 +108,22 @@ class AuthControllerIntegrationTest {
                         }
                         """)
             )
-            .andExpect(status().isUnauthorized());
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.success", is(false)))
+            .andExpect(jsonPath("$.errorCode", is("AUTH_INVALID_CREDENTIALS")));
     }
 
     @Test
-    void me_withoutToken_shouldBeRejected()
-        throws Exception {
-
-        mockMvc.perform(
-                get("/api/users/me")
-            )
-            .andExpect(status().isUnauthorized());
+    void me_withoutToken_shouldBeRejected() throws Exception {
+        mockMvc.perform(get("/api/v1/auth/me"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.errorCode", is("UNAUTHORIZED")));
     }
 
     @Test
-    void me_withValidToken_shouldReturnCurrentUser()
-        throws Exception {
-
+    void me_withValidToken_shouldReturnCurrentUser() throws Exception {
         MvcResult loginResult = mockMvc.perform(
-                post("/api/auth/login")
+                post("/api/v1/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("""
                         {
@@ -117,50 +135,27 @@ class AuthControllerIntegrationTest {
             .andExpect(status().isOk())
             .andReturn();
 
-        String loginResponse =
-            loginResult.getResponse().getContentAsString();
-
-        String token = JsonPath.read(
-            loginResponse,
-            "$.token"
-        );
+        String loginResponse = loginResult.getResponse().getContentAsString();
+        String token = JsonPath.read(loginResponse, "$.data.accessToken");
 
         mockMvc.perform(
-                get("/api/users/me")
-                    .header(
-                        "Authorization",
-                        "Bearer " + token
-                    )
+                get("/api/v1/auth/me")
+                    .header("Authorization", "Bearer " + token)
             )
             .andExpect(status().isOk())
-            .andExpect(
-                jsonPath("$.email", is(EMAIL))
-            )
-            .andExpect(
-                jsonPath("$.firstName", is("Integration"))
-            )
-            .andExpect(
-                jsonPath("$.lastName", is("Test"))
-            )
-            .andExpect(
-                jsonPath("$.active", is(true))
-            )
-            .andExpect(
-                jsonPath("$.roles[0]", is("USER"))
-            );
+            .andExpect(jsonPath("$.success", is(true)))
+            .andExpect(jsonPath("$.data.email", is(EMAIL)))
+            .andExpect(jsonPath("$.data.fullName", is("Integration Test")))
+            .andExpect(jsonPath("$.data.role", is("CUSTOMER")));
     }
 
     @Test
-    void me_withInvalidToken_shouldBeRejected()
-        throws Exception {
-
+    void me_withInvalidToken_shouldBeRejected() throws Exception {
         mockMvc.perform(
-                get("/api/users/me")
-                    .header(
-                        "Authorization",
-                        "Bearer invalid.jwt.token"
-                    )
+                get("/api/v1/auth/me")
+                    .header("Authorization", "Bearer invalid-token")
             )
-            .andExpect(status().isUnauthorized());
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.errorCode", is("UNAUTHORIZED")));
     }
 }

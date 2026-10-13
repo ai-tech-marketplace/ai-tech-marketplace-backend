@@ -1,5 +1,6 @@
 package com.aitechmarketplace.backend.user.service;
 
+import com.aitechmarketplace.backend.common.exception.ConflictException;
 import com.aitechmarketplace.backend.user.entity.Role;
 import com.aitechmarketplace.backend.user.entity.RoleName;
 import com.aitechmarketplace.backend.user.entity.User;
@@ -29,118 +30,81 @@ class UserServiceImplTest {
     @InjectMocks
     private UserServiceImpl userService;
 
-    private Role userRole;
+    private Role customerRole;
 
     @BeforeEach
     void setUp() {
-        userRole = new Role(1L, RoleName.USER);
+        customerRole = new Role(1L, RoleName.CUSTOMER);
     }
 
     @Test
     void register_shouldCreateUserSuccessfully() {
         String email = "test@example.com";
         String passwordHash = "hashed-password";
+        String fullName = "Test User";
+        String phone = "0123456789";
 
-        when(userRepository.existsByEmail(email))
-            .thenReturn(false);
-
-        when(roleRepository.findByName(RoleName.USER))
-            .thenReturn(Optional.of(userRole));
+        when(userRepository.existsByEmail(email)).thenReturn(false);
+        when(roleRepository.findByName(RoleName.CUSTOMER)).thenReturn(Optional.of(customerRole));
 
         User savedUser = new User();
         savedUser.setEmail(email);
         savedUser.setPasswordHash(passwordHash);
+        savedUser.setFullName(fullName);
+        savedUser.setPhone(phone);
+        savedUser.setStatus("ACTIVE");
 
-        when(userRepository.save(any(User.class)))
-            .thenReturn(savedUser);
+        when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
-        User result = userService.register(
-            email,
-            passwordHash,
-            "Test",
-            "User"
-        );
+        User result = userService.register(email, passwordHash, fullName, phone);
 
         assertNotNull(result);
         assertEquals(email, result.getEmail());
         assertEquals(passwordHash, result.getPasswordHash());
+        assertEquals(fullName, result.getFullName());
+        assertEquals(phone, result.getPhone());
+        assertEquals("ACTIVE", result.getStatus());
 
-        verify(userRepository)
-            .existsByEmail(email);
-
-        verify(roleRepository)
-            .findByName(RoleName.USER);
-
-        verify(userRepository)
-            .save(any(User.class));
+        verify(userRepository).existsByEmail(email);
+        verify(roleRepository).findByName(RoleName.CUSTOMER);
+        verify(userRepository).save(any(User.class));
     }
 
     @Test
-    void register_shouldThrowExceptionWhenEmailAlreadyExists() {
+    void register_shouldThrowConflictExceptionWhenEmailAlreadyExists() {
         String email = "existing@example.com";
 
-        when(userRepository.existsByEmail(email))
-            .thenReturn(true);
+        when(userRepository.existsByEmail(email)).thenReturn(true);
 
-        IllegalArgumentException exception =
-            assertThrows(
-                IllegalArgumentException.class,
-                () -> userService.register(
-                    email,
-                    "hashed-password",
-                    "Test",
-                    "User"
-                )
-            );
-
-        assertEquals(
-            "Email already exists",
-            exception.getMessage()
+        ConflictException exception = assertThrows(
+            ConflictException.class,
+            () -> userService.register(email, "hashed-password", "Test User", "0123456789")
         );
 
-        verify(userRepository)
-            .existsByEmail(email);
+        assertEquals("Email already exists", exception.getMessage());
+        assertEquals("USER_ALREADY_EXISTS", exception.getErrorCode());
 
-        verify(roleRepository, never())
-            .findByName(any());
-
-        verify(userRepository, never())
-            .save(any());
+        verify(userRepository).existsByEmail(email);
+        verify(roleRepository, never()).findByName(any());
+        verify(userRepository, never()).save(any());
     }
 
     @Test
-    void register_shouldThrowExceptionWhenUserRoleDoesNotExist() {
+    void register_shouldThrowExceptionWhenCustomerRoleDoesNotExist() {
         String email = "test@example.com";
 
-        when(userRepository.existsByEmail(email))
-            .thenReturn(false);
+        when(userRepository.existsByEmail(email)).thenReturn(false);
+        when(roleRepository.findByName(RoleName.CUSTOMER)).thenReturn(Optional.empty());
 
-        when(roleRepository.findByName(RoleName.USER))
-            .thenReturn(Optional.empty());
-
-        IllegalStateException exception =
-            assertThrows(
-                IllegalStateException.class,
-                () -> userService.register(
-                    email,
-                    "hashed-password",
-                    "Test",
-                    "User"
-                )
-            );
-
-        assertEquals(
-            "Default USER role not found",
-            exception.getMessage()
+        IllegalStateException exception = assertThrows(
+            IllegalStateException.class,
+            () -> userService.register(email, "hashed-password", "Test User", "0123456789")
         );
 
-        verify(userRepository)
-            .existsByEmail(email);
+        assertEquals("Default CUSTOMER role not found", exception.getMessage());
 
-        verify(roleRepository)
-            .findByName(RoleName.USER);
-
-        verify(userRepository, never())
-            .save(any());
+        verify(userRepository).existsByEmail(email);
+        verify(roleRepository).findByName(RoleName.CUSTOMER);
+        verify(userRepository, never()).save(any());
     }
 }

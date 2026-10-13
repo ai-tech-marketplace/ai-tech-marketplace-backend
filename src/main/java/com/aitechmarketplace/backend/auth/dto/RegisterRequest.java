@@ -1,16 +1,32 @@
 package com.aitechmarketplace.backend.auth.dto;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 public class RegisterRequest {
 
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email format")
     private String email;
 
+    @NotBlank(message = "Password is required")
+    @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
 
-    private String firstName;
+    @NotBlank(message = "Full name is required")
+    private String fullName;
 
-    private String lastName;
+    private String phone;
 
     public RegisterRequest() {
+    }
+
+    public RegisterRequest(String email, String password, String fullName, String phone) {
+        this.email = email;
+        this.password = password;
+        this.fullName = fullName;
+        this.phone = phone;
     }
 
     public String getEmail() {
@@ -29,19 +45,19 @@ public class RegisterRequest {
         this.password = password;
     }
 
-    public String getFirstName() {
-        return firstName;
+    public String getFullName() {
+        return fullName;
     }
 
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
     }
 
-    public String getLastName() {
-        return lastName;
+    public String getPhone() {
+        return phone;
     }
 
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 }

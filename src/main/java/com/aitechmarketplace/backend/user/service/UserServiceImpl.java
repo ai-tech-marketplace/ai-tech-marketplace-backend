@@ -1,5 +1,6 @@
 package com.aitechmarketplace.backend.user.service;
 
+import com.aitechmarketplace.backend.common.exception.ConflictException;
 import com.aitechmarketplace.backend.user.entity.Role;
 import com.aitechmarketplace.backend.user.entity.RoleName;
 import com.aitechmarketplace.backend.user.entity.User;
@@ -29,31 +30,32 @@ public class UserServiceImpl implements UserService {
     public User register(
         String email,
         String passwordHash,
-        String firstName,
-        String lastName
+        String fullName,
+        String phone
     ) {
         if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException(
-                "Email already exists"
+            throw new ConflictException(
+                "Email already exists",
+                "USER_ALREADY_EXISTS"
             );
         }
 
-        Role userRole = roleRepository
-            .findByName(RoleName.USER)
+        Role customerRole = roleRepository
+            .findByName(RoleName.CUSTOMER)
             .orElseThrow(() ->
                 new IllegalStateException(
-                    "Default USER role not found"
+                    "Default CUSTOMER role not found"
                 )
             );
 
         User user = new User();
-
         user.setEmail(email);
         user.setPasswordHash(passwordHash);
-        user.setFirstName(firstName);
-        user.setLastName(lastName);
+        user.setFullName(fullName);
+        user.setPhone(phone);
+        user.setStatus("ACTIVE");
 
-        user.getRoles().add(userRole);
+        user.getRoles().add(customerRole);
 
         return userRepository.save(user);
     }
