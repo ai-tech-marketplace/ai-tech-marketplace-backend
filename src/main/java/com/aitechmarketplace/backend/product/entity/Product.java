@@ -1,5 +1,6 @@
 package com.aitechmarketplace.backend.product.entity;
 
+import com.aitechmarketplace.backend.brand.entity.Brand;
 import com.aitechmarketplace.backend.category.entity.Category;
 import com.aitechmarketplace.backend.user.entity.User;
 import jakarta.persistence.*;
@@ -25,6 +26,10 @@ public class Product {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "brand_id")
+    private Brand brand;
 
 
     @Column(
@@ -161,5 +166,13 @@ public class Product {
 
     public void setCategory(Category category) {
         this.category = category;
+    }
+
+    public Brand getBrand() {
+        return brand;
+    }
+
+    public void setBrand(Brand brand) {
+        this.brand = brand;
     }
 }

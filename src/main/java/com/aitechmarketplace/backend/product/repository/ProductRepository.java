@@ -50,4 +50,6 @@ List<Product> findBySellerIdAndActiveTrue(@Param("sellerId") Long sellerId);
 
 boolean existsByCategoryIdAndStatus(Long categoryId, String status);
 
+boolean existsByBrandIdAndStatus(Long brandId, String status);
+
 }
