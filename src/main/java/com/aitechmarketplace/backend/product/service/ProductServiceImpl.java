@@ -20,9 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Service
 @Transactional
@@ -60,8 +58,7 @@ public class ProductServiceImpl implements ProductService {
                     "Seller account is inactive");
         }
 
-        Set<Category> categories =
-                resolveCategories(categoryIds);
+        Category category = resolveCategory(categoryIds);
 
         Product product = new Product();
 
@@ -70,7 +67,7 @@ public class ProductServiceImpl implements ProductService {
         product.setDescription(description);
         product.setPrice(price);
         product.setStockQuantity(stockQuantity);
-        product.getCategories().addAll(categories);
+        product.setCategory(category);
 
         return productRepository.save(product);
     }
@@ -132,16 +129,13 @@ public class ProductServiceImpl implements ProductService {
             );
         }
 
-        Set<Category> categories =
-                resolveCategories(categoryIds);
+        Category category = resolveCategory(categoryIds);
 
         product.setName(name);
         product.setDescription(description);
         product.setPrice(price);
         product.setStockQuantity(stockQuantity);
-
-        product.getCategories().clear();
-        product.getCategories().addAll(categories);
+        product.setCategory(category);
 
         return productRepository.save(product);
     }
@@ -176,25 +170,15 @@ public class ProductServiceImpl implements ProductService {
         productRepository.save(product);
     }
 
-    private Set<Category> resolveCategories(
-            List<Long> categoryIds) {
-
-        if (categoryIds == null ||
-                categoryIds.isEmpty()) {
-
-            return new HashSet<>();
+    private Category resolveCategory(List<Long> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            return null;
         }
 
-        List<Category> categories =
-                categoryRepository.findAllById(categoryIds);
-
-        if (categories.size() != categoryIds.size()) {
-
-            throw new NotFoundException(
-                    "One or more categories not found");
-        }
-
-        return new HashSet<>(categories);
+        Long categoryId = categoryIds.get(0);
+        return categoryRepository.findById(categoryId)
+                .orElseThrow(() ->
+                        new NotFoundException("Category not found"));
     }
 
     @Override

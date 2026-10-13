@@ -13,8 +13,8 @@ import com.aitechmarketplace.backend.product.entity.Product;
     name = "categories",
     uniqueConstraints = {
         @UniqueConstraint(
-            name = "uk_categories_name",
-            columnNames = "name"
+            name = "uk_categories_slug",
+            columnNames = "slug"
         )
     }
 )
@@ -24,23 +24,30 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToMany(mappedBy = "categories", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
     private Set<Product> products = new HashSet<>();
 
     @Column(
         nullable = false,
-        length = 255
+        length = 100
     )
     private String name;
+
+    @Column(
+        nullable = false,
+        length = 150
+    )
+    private String slug;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column(
-        name = "is_active",
-        nullable = false
+        name = "status",
+        nullable = false,
+        length = 30
     )
-    private boolean active = true;
+    private String status = "ACTIVE";
 
     @Column(
         name = "created_at",
@@ -59,9 +66,11 @@ public class Category {
     @PrePersist
     protected void onCreate() {
         OffsetDateTime now = OffsetDateTime.now();
-
         createdAt = now;
         updatedAt = now;
+        if (status == null) {
+            status = "ACTIVE";
+        }
     }
 
     @PreUpdate
@@ -73,12 +82,24 @@ public class Category {
         return id;
     }
 
+    public void setId(Long id) {
+        this.id = id;
+    }
+
     public String getName() {
         return name;
     }
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getSlug() {
+        return slug;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
     }
 
     public String getDescription() {
@@ -89,12 +110,20 @@ public class Category {
         this.description = description;
     }
 
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
     public boolean isActive() {
-        return active;
+        return "ACTIVE".equalsIgnoreCase(this.status);
     }
 
     public void setActive(boolean active) {
-        this.active = active;
+        this.status = active ? "ACTIVE" : "INACTIVE";
     }
 
     public OffsetDateTime getCreatedAt() {
@@ -107,5 +136,9 @@ public class Category {
 
     public Set<Product> getProducts() {
         return products;
+    }
+
+    public void setProducts(Set<Product> products) {
+        this.products = products;
     }
 }

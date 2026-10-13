@@ -6,8 +6,6 @@ import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 @Entity
 @Table(name = "products")
@@ -24,13 +22,9 @@ public class Product {
     )
     private User seller;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-    name = "product_categories",
-    joinColumns = @JoinColumn(name = "product_id"),
-    inverseJoinColumns = @JoinColumn(name = "category_id")
-    )
-    private Set<Category> categories = new HashSet<>();
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
 
 
     @Column(
@@ -56,10 +50,11 @@ public class Product {
     private Integer stockQuantity = 0;
 
     @Column(
-        name = "is_active",
-        nullable = false
+        name = "status",
+        nullable = false,
+        length = 30
     )
-    private boolean active = true;
+    private String status = "ACTIVE";
 
     @Column(
         name = "created_at",
@@ -82,6 +77,9 @@ public class Product {
 
         createdAt = now;
         updatedAt = now;
+        if (status == null) {
+            status = "ACTIVE";
+        }
     }
 
     @PreUpdate
@@ -134,11 +132,19 @@ public class Product {
     }
 
     public boolean isActive() {
-        return active;
+        return "ACTIVE".equalsIgnoreCase(this.status);
     }
 
     public void setActive(boolean active) {
-        this.active = active;
+        this.status = active ? "ACTIVE" : "INACTIVE";
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public OffsetDateTime getCreatedAt() {
@@ -149,11 +155,11 @@ public class Product {
         return updatedAt;
     }
 
-    public Set<Category> getCategories() {
-        return categories;
+    public Category getCategory() {
+        return category;
     }
 
-    public void setCategories(Set<Category> categories) {
-        this.categories = categories;
+    public void setCategory(Category category) {
+        this.category = category;
     }
 }

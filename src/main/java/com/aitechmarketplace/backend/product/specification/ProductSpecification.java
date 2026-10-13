@@ -12,7 +12,7 @@ private ProductSpecification() {
 
 public static Specification<Product> isActive() {
     return (root, query, criteriaBuilder) ->
-        criteriaBuilder.isTrue(root.get("active"));
+        criteriaBuilder.equal(root.get("status"), "ACTIVE");
 }
 
 public static Specification<Product> hasKeyword(
@@ -47,7 +47,7 @@ public static Specification<Product> hasCategoryId(
         }
 
         return criteriaBuilder.equal(
-            root.join("categories").get("id"),
+            root.get("category").get("id"),
             categoryId
         );
     };
