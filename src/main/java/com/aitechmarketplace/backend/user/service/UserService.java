@@ -9,8 +9,8 @@ public interface UserService {
     User register(
         String email,
         String passwordHash,
-        String firstName,
-        String lastName
+        String fullName,
+        String phone
     );
 
     Optional<User> findByEmail(String email);

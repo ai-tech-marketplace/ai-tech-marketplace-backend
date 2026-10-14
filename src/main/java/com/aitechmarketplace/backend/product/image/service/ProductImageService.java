@@ -16,8 +16,18 @@ public interface ProductImageService {
             Long productId,
             Long userId,
             boolean isAdmin,
-            MultipartFile file
+            MultipartFile file,
+            boolean isPrimary
     ) throws IOException;
+
+    default ProductImage upload(
+            Long productId,
+            Long userId,
+            boolean isAdmin,
+            MultipartFile file
+    ) throws IOException {
+        return upload(productId, userId, isAdmin, file, false);
+    }
 
     List<ProductImage> findByProductId(Long productId);
 
@@ -31,5 +41,5 @@ public interface ProductImageService {
     ResponseBytes<GetObjectResponse> download(
         Long productId,
         Long imageId
-);
+    );
 }

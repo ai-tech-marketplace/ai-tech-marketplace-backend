@@ -12,6 +12,7 @@ public record ProductImageResponse(
         Long fileSize,
         Integer displayOrder,
         String objectKey,
+        boolean isPrimary,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
@@ -25,6 +26,7 @@ public record ProductImageResponse(
                 image.getFileSize(),
                 image.getDisplayOrder(),
                 image.getObjectKey(),
+                image.isPrimary(),
                 image.getCreatedAt(),
                 image.getUpdatedAt()
         );

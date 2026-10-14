@@ -4,7 +4,6 @@ import com.aitechmarketplace.backend.product.entity.Product;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.List;
 
 public record ProductResponse(
         Long id,
@@ -17,7 +16,7 @@ public record ProductResponse(
         boolean active,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
-        List<Long> categoryIds) {
+        Long categoryId) {
 
     public static ProductResponse from(Product product) {
         return new ProductResponse(
@@ -31,10 +30,7 @@ public record ProductResponse(
                 product.isActive(),
                 product.getCreatedAt(),
                 product.getUpdatedAt(),
-                product.getCategories()
-                        .stream()
-                        .map(category -> category.getId())
-                        .toList());
+                product.getCategory() != null ? product.getCategory().getId() : null);
     }
 
 }

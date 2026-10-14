@@ -1,24 +1,21 @@
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
-
     email VARCHAR(255) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-
-    first_name VARCHAR(100),
-    last_name VARCHAR(100),
-
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-
+    full_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(30),
+    status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT uk_users_email UNIQUE (email)
 );
 
+CREATE INDEX idx_users_email ON users(email);
+
 
 CREATE TABLE roles (
     id BIGSERIAL PRIMARY KEY,
-
     name VARCHAR(50) NOT NULL,
 
     CONSTRAINT uk_roles_name UNIQUE (name)
@@ -45,5 +42,6 @@ CREATE TABLE user_roles (
 
 INSERT INTO roles (name)
 VALUES
-    ('USER'),
+    ('CUSTOMER'),
+    ('SELLER'),
     ('ADMIN');

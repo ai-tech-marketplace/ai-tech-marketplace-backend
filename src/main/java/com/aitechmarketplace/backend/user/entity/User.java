@@ -28,14 +28,14 @@ public class User {
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
-    @Column(name = "first_name", length = 100)
-    private String firstName;
+    @Column(name = "full_name", nullable = false, length = 100)
+    private String fullName;
 
-    @Column(name = "last_name", length = 100)
-    private String lastName;
+    @Column(name = "phone", length = 30)
+    private String phone;
 
-    @Column(name = "is_active", nullable = false)
-    private boolean active = true;
+    @Column(name = "status", nullable = false, length = 30)
+    private String status = "ACTIVE";
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
@@ -61,9 +61,11 @@ public class User {
     @PrePersist
     protected void onCreate() {
         OffsetDateTime now = OffsetDateTime.now();
-
         createdAt = now;
         updatedAt = now;
+        if (status == null) {
+            status = "ACTIVE";
+        }
     }
 
     @PreUpdate
@@ -73,6 +75,10 @@ public class User {
 
     public Long getId() {
         return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getEmail() {
@@ -91,28 +97,36 @@ public class User {
         this.passwordHash = passwordHash;
     }
 
-    public String getFirstName() {
-        return firstName;
+    public String getFullName() {
+        return fullName;
     }
 
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
     }
 
-    public String getLastName() {
-        return lastName;
+    public String getPhone() {
+        return phone;
     }
 
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public boolean isActive() {
-        return active;
+        return "ACTIVE".equalsIgnoreCase(this.status);
     }
 
     public void setActive(boolean active) {
-        this.active = active;
+        this.status = active ? "ACTIVE" : "INACTIVE";
     }
 
     public OffsetDateTime getCreatedAt() {
