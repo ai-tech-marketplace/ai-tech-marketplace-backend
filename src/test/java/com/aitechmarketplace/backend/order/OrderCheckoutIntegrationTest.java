@@ -187,11 +187,11 @@ class OrderCheckoutIntegrationTest {
                         && event.userId().equals(user.getId()))
         );
 
-        // Verify Kafka consumer receives the event
+        // Verify Kafka consumer receives the event — key is userId (user-level partitioning)
         verify(notificationConsumer, timeout(10000)).handleOrderEvent(
                 argThat(raw -> {
                     if (raw instanceof ConsumerRecord<?, ?> cr) {
-                        return cr.key() != null && cr.key().equals(response.orderNumber());
+                        return cr.key() != null && cr.key().equals(user.getId().toString());
                     }
                     return false;
                 })

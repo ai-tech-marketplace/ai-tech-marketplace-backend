@@ -46,6 +46,7 @@ class DomainEventPublisherTest {
 
         var records = KafkaTestUtils.getRecords(consumer, Duration.ofSeconds(10));
         assertThat(records.count()).isGreaterThanOrEqualTo(1);
+        records.forEach(record -> assertThat(record.key()).isEqualTo("1")); // key must be userId, not orderNumber
         consumer.close();
     }
 
@@ -66,6 +67,7 @@ class DomainEventPublisherTest {
 
         var records = KafkaTestUtils.getRecords(consumer, Duration.ofSeconds(10));
         assertThat(records.count()).isGreaterThanOrEqualTo(1);
+        records.forEach(record -> assertThat(record.key()).isEqualTo("1")); // key must be userId, not orderNumber
         consumer.close();
     }
 }

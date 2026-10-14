@@ -17,27 +17,27 @@ public class DomainEventPublisher {
     }
 
     public void publishOrderCreated(OrderCreatedEvent event) {
-        log.info("Publishing OrderCreatedEvent for order: {}", event.orderNumber());
-        kafkaTemplate.send(EventTopics.ORDERS, event.orderNumber(), event)
+        log.info("Publishing OrderCreatedEvent for order: {}, userId: {}", event.orderNumber(), event.userId());
+        kafkaTemplate.send(EventTopics.ORDERS, event.userId().toString(), event)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
-                        log.error("Failed to publish OrderCreatedEvent for order: {}", event.orderNumber(), ex);
+                        log.error("Failed to publish OrderCreatedEvent for order: {}, userId: {}", event.orderNumber(), event.userId(), ex);
                     } else {
-                        log.info("Successfully published OrderCreatedEvent for order: {} to partition: {}",
-                                event.orderNumber(), result.getRecordMetadata().partition());
+                        log.info("Successfully published OrderCreatedEvent for order: {}, userId: {}, partition: {}",
+                                event.orderNumber(), event.userId(), result.getRecordMetadata().partition());
                     }
                 });
     }
 
     public void publishOrderCancelled(OrderCancelledEvent event) {
-        log.info("Publishing OrderCancelledEvent for order: {}", event.orderNumber());
-        kafkaTemplate.send(EventTopics.ORDERS, event.orderNumber(), event)
+        log.info("Publishing OrderCancelledEvent for order: {}, userId: {}", event.orderNumber(), event.userId());
+        kafkaTemplate.send(EventTopics.ORDERS, event.userId().toString(), event)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
-                        log.error("Failed to publish OrderCancelledEvent for order: {}", event.orderNumber(), ex);
+                        log.error("Failed to publish OrderCancelledEvent for order: {}, userId: {}", event.orderNumber(), event.userId(), ex);
                     } else {
-                        log.info("Successfully published OrderCancelledEvent for order: {} to partition: {}",
-                                event.orderNumber(), result.getRecordMetadata().partition());
+                        log.info("Successfully published OrderCancelledEvent for order: {}, userId: {}, partition: {}",
+                                event.orderNumber(), event.userId(), result.getRecordMetadata().partition());
                     }
                 });
     }
