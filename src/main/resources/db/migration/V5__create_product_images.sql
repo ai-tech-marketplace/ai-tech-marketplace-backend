@@ -1,20 +1,13 @@
 CREATE TABLE product_images (
     id BIGSERIAL PRIMARY KEY,
-
     product_id BIGINT NOT NULL,
-
     object_key VARCHAR(500) NOT NULL,
-
     original_filename VARCHAR(255) NOT NULL,
-
     content_type VARCHAR(100) NOT NULL,
-
     file_size BIGINT NOT NULL,
-
     display_order INTEGER NOT NULL DEFAULT 0,
-
+    is_primary BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_product_images_product
@@ -37,3 +30,6 @@ CREATE INDEX idx_product_images_product_id
 
 CREATE INDEX idx_product_images_product_order
     ON product_images(product_id, display_order);
+
+CREATE INDEX idx_product_images_is_primary
+    ON product_images(is_primary);

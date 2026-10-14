@@ -1,14 +1,12 @@
 package com.aitechmarketplace.backend.product.service;
 
-import com.aitechmarketplace.backend.product.dto.ProductPageResponse;
-import com.aitechmarketplace.backend.product.dto.ProductSearchRequest;
+import com.aitechmarketplace.backend.product.dto.*;
 import com.aitechmarketplace.backend.product.entity.Product;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
-
-import org.springframework.data.domain.Pageable;
 
 public interface ProductService {
 
@@ -21,7 +19,11 @@ public interface ProductService {
             List<Long> categoryIds
     );
 
+    Product create(Long sellerId, ProductCreateRequest request);
+
     Optional<Product> findById(Long id);
+
+    Optional<Product> findBySlug(String slug);
 
     List<Product> findActiveProducts();
 
@@ -40,6 +42,8 @@ public interface ProductService {
             List<Long> categoryIds
     );
 
+    Product update(Long productId, Long userId, boolean isAdmin, ProductUpdateRequest request);
+
     void deactivate(
             Long productId,
             Long userId,
@@ -52,9 +56,9 @@ public interface ProductService {
     );
 
     Product updateStock(
-        Long productId,
-        Long userId,
-        boolean isAdmin,
-        Integer stockQuantity
-);
+            Long productId,
+            Long userId,
+            boolean isAdmin,
+            Integer stockQuantity
+    );
 }

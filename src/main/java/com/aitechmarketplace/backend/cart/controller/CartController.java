@@ -1,9 +1,6 @@
 package com.aitechmarketplace.backend.cart.controller;
 
-import com.aitechmarketplace.backend.cart.dto.CartItemActionResponse;
-import com.aitechmarketplace.backend.cart.dto.CartItemAddRequest;
-import com.aitechmarketplace.backend.cart.dto.CartItemUpdateRequest;
-import com.aitechmarketplace.backend.cart.dto.CartResponse;
+import com.aitechmarketplace.backend.cart.dto.*;
 import com.aitechmarketplace.backend.cart.service.CartService;
 import com.aitechmarketplace.backend.common.dto.ApiResponse;
 import jakarta.validation.Valid;
@@ -11,7 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping({"/api/v1/cart", "/api/cart"})
+@RequestMapping("/api/v1/cart")
 public class CartController {
 
     private final CartService cartService;
@@ -70,5 +67,14 @@ public class CartController {
             @RequestAttribute("userId") Long userId
     ) {
         cartService.clearCart(userId);
+    }
+
+    @PostMapping("/merge")
+    public ApiResponse<CartResponse> merge(
+            @RequestAttribute("userId") Long userId,
+            @Valid @RequestBody CartMergeRequest request
+    ) {
+        CartResponse cart = cartService.merge(userId, request);
+        return ApiResponse.success(cart, "Cart merged successfully");
     }
 }

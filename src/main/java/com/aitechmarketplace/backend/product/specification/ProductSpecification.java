@@ -12,7 +12,7 @@ private ProductSpecification() {
 
 public static Specification<Product> isActive() {
     return (root, query, criteriaBuilder) ->
-        criteriaBuilder.isTrue(root.get("active"));
+        criteriaBuilder.equal(root.get("status"), "ACTIVE");
 }
 
 public static Specification<Product> hasKeyword(
@@ -47,8 +47,24 @@ public static Specification<Product> hasCategoryId(
         }
 
         return criteriaBuilder.equal(
-            root.join("categories").get("id"),
+            root.get("category").get("id"),
             categoryId
+        );
+    };
+}
+
+public static Specification<Product> hasBrandId(
+    Long brandId
+) {
+    return (root, query, criteriaBuilder) -> {
+
+        if (brandId == null) {
+            return criteriaBuilder.conjunction();
+        }
+
+        return criteriaBuilder.equal(
+            root.get("brand").get("id"),
+            brandId
         );
     };
 }

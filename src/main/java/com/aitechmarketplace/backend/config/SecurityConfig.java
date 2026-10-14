@@ -3,6 +3,7 @@ package com.aitechmarketplace.backend.config;
 import com.aitechmarketplace.backend.auth.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -11,9 +12,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-@EnableMethodSecurity 
+@EnableMethodSecurity
 @Configuration
 public class SecurityConfig {
 
@@ -23,41 +25,39 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
-      @Bean
+    @Bean
     public SecurityFilterChain securityFilterChain(
-        HttpSecurity http
+            HttpSecurity http
     ) throws Exception {
 
         http
             .csrf(csrf -> csrf.disable())
-
             .formLogin(form -> form.disable())
-
             .httpBasic(basic -> basic.disable())
-
             .sessionManagement(session ->
-                session.sessionCreationPolicy(
-                    SessionCreationPolicy.STATELESS
-                )
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
-
-            .exceptionHandling(exception ->
-                exception.authenticationEntryPoint(
-                    authenticationEntryPoint()
-                )
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint(authenticationEntryPoint())
+                .accessDeniedHandler(accessDeniedHandler())
             )
-
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/api/auth/register",
-                    "/api/auth/login",
+                    "/api/v1/auth/register",
+                    "/api/v1/auth/login",
                     "/actuator/health",
                     "/actuator/health/**"
                 ).permitAll()
-                .anyRequest()
-                .authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/v1/products/my").authenticated()
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/v1/products/**",
+                    "/api/v1/categories/**",
+                    "/api/v1/brands/**"
+                ).permitAll()
+                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                .anyRequest().authenticated()
             )
-
             .addFilterBefore(
                 jwtAuthenticationFilter,
                 UsernamePasswordAuthenticationFilter.class
@@ -69,10 +69,20 @@ public class SecurityConfig {
     @Bean
     public AuthenticationEntryPoint authenticationEntryPoint() {
         return (request, response, authException) -> {
-            response.sendError(
-                HttpStatus.UNAUTHORIZED.value(),
-                "Unauthorized"
-            );
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write("{\"success\":false,\"data\":null,\"message\":\"Unauthorized\",\"errorCode\":\"UNAUTHORIZED\"}");
+        };
+    }
+
+    @Bean
+    public AccessDeniedHandler accessDeniedHandler() {
+        return (request, response, accessDeniedException) -> {
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write("{\"success\":false,\"data\":null,\"message\":\"Forbidden\",\"errorCode\":\"FORBIDDEN\"}");
         };
     }
 

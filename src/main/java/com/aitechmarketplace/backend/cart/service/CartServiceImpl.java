@@ -1,9 +1,6 @@
 package com.aitechmarketplace.backend.cart.service;
 
-import com.aitechmarketplace.backend.cart.dto.CartItemActionResponse;
-import com.aitechmarketplace.backend.cart.dto.CartItemResponse;
-import com.aitechmarketplace.backend.cart.dto.CartProductResponse;
-import com.aitechmarketplace.backend.cart.dto.CartResponse;
+import com.aitechmarketplace.backend.cart.dto.*;
 import com.aitechmarketplace.backend.cart.entity.Cart;
 import com.aitechmarketplace.backend.cart.entity.CartItem;
 import com.aitechmarketplace.backend.cart.repository.CartItemRepository;
@@ -20,7 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -133,13 +131,80 @@ public class CartServiceImpl implements CartService {
                 .ifPresent(cart -> cartItemRepository.deleteByCartId(cart.getId()));
     }
 
+    @Override
+    public CartResponse merge(Long userId, CartMergeRequest request) {
+        if (request == null || request.items() == null || request.items().isEmpty()) {
+            return getCart(userId);
+        }
+
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new NotFoundException("User not found", "USER_NOT_FOUND"));
+                    return cartRepository.save(new Cart(user));
+                });
+
+        for (CartItemAddRequest itemReq : request.items()) {
+            if (itemReq.productId() == null || itemReq.quantity() == null || itemReq.quantity() <= 0) {
+                continue;
+            }
+
+            Optional<Product> productOpt = productRepository.findById(itemReq.productId());
+            if (productOpt.isEmpty()) {
+                continue;
+            }
+
+            Product product = productOpt.get();
+            if (!product.isActive() || product.getStockQuantity() <= 0) {
+                continue;
+            }
+
+            Optional<CartItem> existingItemOpt = cartItemRepository.findByCartIdAndProductId(cart.getId(), product.getId());
+            if (existingItemOpt.isPresent()) {
+                CartItem existingItem = existingItemOpt.get();
+                int totalRequested = existingItem.getQuantity() + itemReq.quantity();
+                int clamped = Math.min(totalRequested, product.getStockQuantity());
+                existingItem.setQuantity(clamped);
+                cartItemRepository.save(existingItem);
+            } else {
+                int clamped = Math.min(itemReq.quantity(), product.getStockQuantity());
+                cartItemRepository.save(new CartItem(cart, product, clamped));
+            }
+        }
+
+        return mapToCartResponse(cart);
+    }
+
     private CartResponse mapToCartResponse(Cart cart) {
         List<CartItem> items = cartItemRepository.findByCartIdOrderByIdAsc(cart.getId());
+
+        List<Long> productIds = items.stream()
+                .map(item -> item.getProduct().getId())
+                .distinct()
+                .toList();
+
+        Map<Long, String> thumbnailMap = new HashMap<>();
+        if (!productIds.isEmpty()) {
+            List<ProductImage> allImages = productImageRepository.findByProductIdInOrderByDisplayOrderAscIdAsc(productIds);
+            Map<Long, List<ProductImage>> imagesByProduct = allImages.stream()
+                    .collect(Collectors.groupingBy(img -> img.getProduct().getId()));
+
+            for (Map.Entry<Long, List<ProductImage>> entry : imagesByProduct.entrySet()) {
+                List<ProductImage> images = entry.getValue();
+                if (!images.isEmpty()) {
+                    ProductImage primaryOrFirst = images.stream()
+                            .filter(ProductImage::isPrimary)
+                            .findFirst()
+                            .orElse(images.get(0));
+                    thumbnailMap.put(entry.getKey(), "/api/v1/products/" + entry.getKey() + "/images/" + primaryOrFirst.getId() + "/content");
+                }
+            }
+        }
 
         List<CartItemResponse> itemResponses = items.stream()
                 .map(item -> {
                     Product product = item.getProduct();
-                    String thumbnailUrl = resolveThumbnailUrl(product.getId());
+                    String thumbnailUrl = thumbnailMap.get(product.getId());
 
                     CartProductResponse productResponse = new CartProductResponse(
                             product.getId(),
@@ -149,12 +214,14 @@ public class CartServiceImpl implements CartService {
                     );
 
                     BigDecimal subtotal = product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+                    boolean isAvailable = product.isActive() && product.getStockQuantity() >= item.getQuantity();
 
                     return new CartItemResponse(
                             item.getId(),
                             productResponse,
                             item.getQuantity(),
-                            subtotal
+                            subtotal,
+                            isAvailable
                     );
                 })
                 .toList();
@@ -168,13 +235,5 @@ public class CartServiceImpl implements CartService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return new CartResponse(cart.getId(), itemResponses, totalItems, totalAmount);
-    }
-
-    private String resolveThumbnailUrl(Long productId) {
-        List<ProductImage> images = productImageRepository.findByProductIdOrderByDisplayOrderAscIdAsc(productId);
-        if (images.isEmpty()) {
-            return null;
-        }
-        return "/api/products/" + productId + "/images/" + images.get(0).getId() + "/content";
     }
 }

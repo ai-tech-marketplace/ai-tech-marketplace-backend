@@ -3,6 +3,8 @@ package com.aitechmarketplace.backend.cart.controller;
 import com.aitechmarketplace.backend.cart.entity.Cart;
 import com.aitechmarketplace.backend.cart.repository.CartItemRepository;
 import com.aitechmarketplace.backend.cart.repository.CartRepository;
+import com.aitechmarketplace.backend.category.entity.Category;
+import com.aitechmarketplace.backend.category.repository.CategoryRepository;
 import com.aitechmarketplace.backend.product.entity.Product;
 import com.aitechmarketplace.backend.product.repository.ProductRepository;
 import com.aitechmarketplace.backend.user.entity.Role;
@@ -64,8 +66,12 @@ class CartControllerIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private CategoryRepository categoryRepository;
+
     private final List<Long> createdUserIds = new ArrayList<>();
     private final List<Long> createdProductIds = new ArrayList<>();
+    private final List<Long> createdCategoryIds = new ArrayList<>();
 
     @AfterEach
     void cleanup() {
@@ -83,6 +89,13 @@ class CartControllerIntegrationTest {
             }
         });
 
+        createdCategoryIds.forEach(id -> {
+            try {
+                categoryRepository.findById(id).ifPresent(categoryRepository::delete);
+            } catch (Exception ignored) {
+            }
+        });
+
         createdUserIds.forEach(id -> {
             try {
                 if (userRepository.existsById(id)) {
@@ -91,6 +104,10 @@ class CartControllerIntegrationTest {
             } catch (Exception ignored) {
             }
         });
+
+        createdProductIds.clear();
+        createdCategoryIds.clear();
+        createdUserIds.clear();
     }
 
     @Test
@@ -376,16 +393,7 @@ class CartControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.totalItems", is(0)));
     }
 
-    @Test
-    void compatibility_bothRoutePrefixesShouldWork() throws Exception {
-        User user = createUser();
-        String token = login(user.getEmail());
 
-        mockMvc.perform(get("/api/cart")
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success", is(true)));
-    }
 
     @Autowired
     private com.aitechmarketplace.backend.user.service.UserService userService;
@@ -398,14 +406,28 @@ class CartControllerIntegrationTest {
         return user;
     }
 
+    private Category getOrCreateCategory() {
+        Category category = new Category();
+        category.setName("Category " + UUID.randomUUID());
+        category.setSlug("category-" + UUID.randomUUID());
+        category.setDescription("Test Description");
+        category.setStatus("ACTIVE");
+        Category saved = categoryRepository.save(category);
+        createdCategoryIds.add(saved.getId());
+        return saved;
+    }
+
     private Product createProduct(User seller, int stock, BigDecimal price) {
         Product product = new Product();
         product.setSeller(seller);
+        product.setSku("SKU-" + UUID.randomUUID());
         product.setName("Product " + UUID.randomUUID());
+        product.setSlug("product-" + UUID.randomUUID());
         product.setDescription("Test Description");
         product.setPrice(price);
         product.setStockQuantity(stock);
         product.setActive(true);
+        product.setCategory(getOrCreateCategory());
 
         Product saved = productRepository.save(product);
         createdProductIds.add(saved.getId());
@@ -413,7 +435,7 @@ class CartControllerIntegrationTest {
     }
 
     private String login(String email) throws Exception {
-        String response = mockMvc.perform(post("/api/auth/login")
+        String response = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -425,6 +447,94 @@ class CartControllerIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
 
         JsonNode root = objectMapper.readTree(response);
-        return root.get("token").asText();
+        return root.path("data").path("accessToken").asText();
+    }
+
+    @Test
+    void mergeCart_shouldClampQuantityWhenExceedsStockAndSkipInactive() throws Exception {
+        User seller = createUser();
+        Product p1 = createProduct(seller, 5, new BigDecimal("1000000.00"));
+        Product p2 = createProduct(seller, 4, new BigDecimal("2000000.00"));
+        Product inactiveProduct = createProduct(seller, 10, new BigDecimal("3000000.00"));
+        inactiveProduct.setActive(false);
+        productRepository.save(inactiveProduct);
+
+        Product outOfStockProduct = createProduct(seller, 0, new BigDecimal("4000000.00"));
+
+        User customer = createUser();
+        String token = login(customer.getEmail());
+
+        // Pre-populate cart with 2 of p1
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "productId": %d,
+                                    "quantity": 2
+                                }
+                                """.formatted(p1.getId())))
+                .andExpect(status().isOk());
+
+        // Merge:
+        // p1: request 5 -> total 7 > stock 5 -> clamped to 5
+        // p2: request 10 -> total 10 > stock 4 -> clamped to 4
+        // inactiveProduct -> skipped
+        // outOfStockProduct -> skipped
+        // unknown product 99999L -> skipped
+        mockMvc.perform(post("/api/v1/cart/merge")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "items": [
+                                        {"productId": %d, "quantity": 5},
+                                        {"productId": %d, "quantity": 10},
+                                        {"productId": %d, "quantity": 2},
+                                        {"productId": %d, "quantity": 1},
+                                        {"productId": 99999, "quantity": 1}
+                                    ]
+                                }
+                                """.formatted(p1.getId(), p2.getId(), inactiveProduct.getId(), outOfStockProduct.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.items", hasSize(2)))
+                .andExpect(jsonPath("$.data.items[0].product.id", is(p1.getId().intValue())))
+                .andExpect(jsonPath("$.data.items[0].quantity", is(5)))
+                .andExpect(jsonPath("$.data.items[0].isAvailable", is(true)))
+                .andExpect(jsonPath("$.data.items[1].product.id", is(p2.getId().intValue())))
+                .andExpect(jsonPath("$.data.items[1].quantity", is(4)))
+                .andExpect(jsonPath("$.data.items[1].isAvailable", is(true)))
+                .andExpect(jsonPath("$.data.totalItems", is(9)));
+    }
+
+    @Test
+    void getCart_shouldReflectIsAvailableFalse_whenStockQuantityBecomesInsufficient() throws Exception {
+        User seller = createUser();
+        Product product = createProduct(seller, 5, new BigDecimal("1000000.00"));
+
+        User customer = createUser();
+        String token = login(customer.getEmail());
+
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "productId": %d,
+                                    "quantity": 5
+                                }
+                                """.formatted(product.getId())))
+                .andExpect(status().isOk());
+
+        // Stock changes to 3 (less than 5 in cart)
+        product.setStockQuantity(3);
+        productRepository.save(product);
+
+        mockMvc.perform(get("/api/v1/cart")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.items[0].isAvailable", is(false)));
     }
 }
