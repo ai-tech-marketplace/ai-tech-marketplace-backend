@@ -8,8 +8,11 @@ import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 public record ProductUpdateRequest(
+    @Size(max = 100, message = "SKU must not exceed 100 characters")
+    String sku,
 
     @NotBlank(message = "Product name is required")
     @Size(
@@ -17,6 +20,9 @@ public record ProductUpdateRequest(
         message = "Product name must not exceed 255 characters"
     )
     String name,
+
+    @Size(max = 300, message = "Slug must not exceed 300 characters")
+    String slug,
 
     @Size(
         max = 5000,
@@ -31,13 +37,39 @@ public record ProductUpdateRequest(
     )
     BigDecimal price,
 
-    @NotNull(message = "Stock quantity is required")
     @Min(
         value = 0,
         message = "Stock quantity must be greater than or equal to 0"
     )
     Integer stockQuantity,
 
-    List<Long> categoryIds
+    Long categoryId,
+
+    List<Long> categoryIds,
+
+    Long brandId,
+
+    Map<String, Object> specifications,
+
+    String status
 ) {
+    public ProductUpdateRequest(
+        String name,
+        String description,
+        BigDecimal price,
+        Integer stockQuantity,
+        List<Long> categoryIds
+    ) {
+        this(null, name, null, description, price, stockQuantity, null, categoryIds, null, null, null);
+    }
+
+    public Long resolveCategoryId() {
+        if (categoryId != null) {
+            return categoryId;
+        }
+        if (categoryIds != null && !categoryIds.isEmpty()) {
+            return categoryIds.get(0);
+        }
+        return null;
+    }
 }

@@ -17,16 +17,40 @@ JpaSpecificationExecutor<Product> {
 @EntityGraph(
     attributePaths = {
         "seller",
-        "category"
+        "category",
+        "brand",
+        "images"
     }
 )
 Optional<Product> findById(Long id);
+
+@EntityGraph(
+    attributePaths = {
+        "seller",
+        "category",
+        "brand",
+        "images"
+    }
+)
+Optional<Product> findBySlug(String slug);
+
+@EntityGraph(
+    attributePaths = {
+        "seller",
+        "category",
+        "brand",
+        "images"
+    }
+)
+Optional<Product> findBySku(String sku);
 
 @Query("SELECT p FROM Product p WHERE p.status = 'ACTIVE'")
 @EntityGraph(
     attributePaths = {
         "seller",
-        "category"
+        "category",
+        "brand",
+        "images"
     }
 )
 List<Product> findByActiveTrue();
@@ -34,7 +58,9 @@ List<Product> findByActiveTrue();
 @EntityGraph(
     attributePaths = {
         "seller",
-        "category"
+        "category",
+        "brand",
+        "images"
     }
 )
 List<Product> findBySellerId(Long sellerId);
@@ -43,10 +69,30 @@ List<Product> findBySellerId(Long sellerId);
 @EntityGraph(
     attributePaths = {
         "seller",
-        "category"
+        "category",
+        "brand",
+        "images"
     }
 )
 List<Product> findBySellerIdAndActiveTrue(@Param("sellerId") Long sellerId);
+
+@Override
+@EntityGraph(
+    attributePaths = {
+        "seller",
+        "category",
+        "brand",
+        "images"
+    }
+)
+org.springframework.data.domain.Page<Product> findAll(
+    org.springframework.data.jpa.domain.Specification<Product> spec,
+    org.springframework.data.domain.Pageable pageable
+);
+
+boolean existsBySku(String sku);
+
+boolean existsBySlug(String slug);
 
 boolean existsByCategoryIdAndStatus(Long categoryId, String status);
 

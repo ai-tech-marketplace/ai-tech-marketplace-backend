@@ -1,5 +1,7 @@
 package com.aitechmarketplace.backend.product.image.controller;
 
+import com.aitechmarketplace.backend.category.entity.Category;
+import com.aitechmarketplace.backend.category.repository.CategoryRepository;
 import com.aitechmarketplace.backend.product.image.entity.ProductImage;
 import com.aitechmarketplace.backend.product.image.repository.ProductImageRepository;
 import com.aitechmarketplace.backend.product.repository.ProductRepository;
@@ -59,6 +61,9 @@ class ProductImageControllerIntegrationTest {
 
     @Autowired
     private RoleRepository roleRepository;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
 
     @Autowired
     private ProductRepository productRepository;
@@ -154,37 +159,37 @@ class ProductImageControllerIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(
                         jsonPath(
-                                "$.productId",
+                                "$.data.productId",
                                 is((int) productId)
                         )
                 )
                 .andExpect(
                         jsonPath(
-                                "$.originalFilename",
+                                "$.data.originalFilename",
                                 is("product-image.jpg")
                         )
                 )
                 .andExpect(
                         jsonPath(
-                                "$.contentType",
+                                "$.data.contentType",
                                 is("image/jpeg")
                         )
                 )
                 .andExpect(
                         jsonPath(
-                                "$.fileSize",
+                                "$.data.fileSize",
                                 is(17)
                         )
                 )
                 .andExpect(
                         jsonPath(
-                                "$.displayOrder",
+                                "$.data.displayOrder",
                                 is(0)
                         )
                 )
                 .andExpect(
                         jsonPath(
-                                "$.objectKey",
+                                "$.data.objectKey",
                                 startsWith(
                                         "products/" +
                                         productId +
@@ -200,7 +205,7 @@ class ProductImageControllerIntegrationTest {
                 objectMapper.readTree(response);
 
         long imageId =
-                json.get("id").asLong();
+                json.path("data").path("id").asLong();
 
         assert imageId > 0;
 
@@ -257,12 +262,12 @@ class ProductImageControllerIntegrationTest {
 
         org.junit.jupiter.api.Assertions.assertEquals(
                 0,
-                firstJson.get("displayOrder").asInt()
+                firstJson.path("data").path("displayOrder").asInt()
         );
 
         org.junit.jupiter.api.Assertions.assertEquals(
                 1,
-                secondJson.get("displayOrder").asInt()
+                secondJson.path("data").path("displayOrder").asInt()
         );
     }
 
@@ -343,13 +348,13 @@ class ProductImageControllerIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(
                         jsonPath(
-                                "$.productId",
+                                "$.data.productId",
                                 is((int) productId)
                         )
                 )
                 .andExpect(
                         jsonPath(
-                                "$.originalFilename",
+                                "$.data.originalFilename",
                                 is("admin-upload.jpg")
                         )
                 );
@@ -559,31 +564,31 @@ class ProductImageControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(
                         jsonPath(
-                                "$",
+                                "$.data",
                                 hasSize(2)
                         )
                 )
                 .andExpect(
                         jsonPath(
-                                "$[0].originalFilename",
+                                "$.data[0].originalFilename",
                                 is("first.jpg")
                         )
                 )
                 .andExpect(
                         jsonPath(
-                                "$[0].displayOrder",
+                                "$.data[0].displayOrder",
                                 is(0)
                         )
                 )
                 .andExpect(
                         jsonPath(
-                                "$[1].originalFilename",
+                                "$.data[1].originalFilename",
                                 is("second.jpg")
                         )
                 )
                 .andExpect(
                         jsonPath(
-                                "$[1].displayOrder",
+                                "$.data[1].displayOrder",
                                 is(1)
                         )
                 );
@@ -638,7 +643,7 @@ class ProductImageControllerIntegrationTest {
                 );
 
         long imageId =
-                uploadJson.get("id").asLong();
+                uploadJson.path("data").path("id").asLong();
 
         mockMvc.perform(
                 get(
@@ -742,7 +747,7 @@ class ProductImageControllerIntegrationTest {
                 );
 
         long imageId =
-                uploadJson.get("id").asLong();
+                uploadJson.path("data").path("id").asLong();
 
         mockMvc.perform(
                 delete(
@@ -770,7 +775,7 @@ class ProductImageControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(
                         jsonPath(
-                                "$",
+                                "$.data",
                                 hasSize(0)
                         )
                 );
@@ -821,7 +826,7 @@ class ProductImageControllerIntegrationTest {
                 );
 
         long imageId =
-                uploadJson.get("id").asLong();
+                uploadJson.path("data").path("id").asLong();
 
         mockMvc.perform(
                 delete(
@@ -851,7 +856,7 @@ class ProductImageControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(
                         jsonPath(
-                                "$",
+                                "$.data",
                                 hasSize(1)
                         )
                 );
@@ -889,7 +894,7 @@ class ProductImageControllerIntegrationTest {
                 );
 
         long imageId =
-                uploadJson.get("id").asLong();
+                uploadJson.path("data").path("id").asLong();
 
         mockMvc.perform(
                 delete(
@@ -917,7 +922,7 @@ class ProductImageControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(
                         jsonPath(
-                                "$",
+                                "$.data",
                                 hasSize(0)
                         )
                 );
@@ -1016,10 +1021,20 @@ class ProductImageControllerIntegrationTest {
             String name
     ) throws Exception {
 
+        Category category = categoryRepository.findAll().stream()
+                .filter(Category::isActive)
+                .findFirst()
+                .orElseGet(() -> {
+                    Category c = new Category();
+                    c.setName("Cat " + UUID.randomUUID());
+                    c.setSlug("cat-" + UUID.randomUUID());
+                    return categoryRepository.save(c);
+                });
+
         String response = mockMvc.perform(
                 org.springframework.test.web.servlet
                         .request.MockMvcRequestBuilders
-                        .post("/api/products")
+                        .post("/api/v1/products")
                         .header(
                                 "Authorization",
                                 "Bearer " + token
@@ -1032,9 +1047,10 @@ class ProductImageControllerIntegrationTest {
                                     "name": "%s",
                                     "description": "Test product",
                                     "price": 1000.00,
-                                    "stockQuantity": 10
+                                    "stockQuantity": 10,
+                                    "categoryId": %d
                                 }
-                                """.formatted(name))
+                                """.formatted(name, category.getId()))
         )
                 .andExpect(status().isCreated())
                 .andReturn()
@@ -1044,7 +1060,8 @@ class ProductImageControllerIntegrationTest {
         long productId =
                 objectMapper
                         .readTree(response)
-                        .get("id")
+                        .path("data")
+                        .path("id")
                         .asLong();
 
         createdProductIds.add(productId);
@@ -1115,7 +1132,7 @@ class ProductImageControllerIntegrationTest {
                 mockMvc.perform(
                         org.springframework.test.web.servlet
                                 .request.MockMvcRequestBuilders
-                                .post("/api/auth/login")
+                                .post("/api/v1/auth/login")
                                 .contentType(
                                         MediaType.APPLICATION_JSON
                                 )
@@ -1137,7 +1154,7 @@ class ProductImageControllerIntegrationTest {
         JsonNode json =
                 objectMapper.readTree(response);
 
-        return json.get("token").asText();
+        return json.path("data").path("accessToken").asText();
     }
 }
 

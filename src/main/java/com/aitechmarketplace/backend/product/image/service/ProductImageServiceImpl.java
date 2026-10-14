@@ -43,7 +43,8 @@ public class ProductImageServiceImpl implements ProductImageService {
             Long productId,
             Long userId,
             boolean isAdmin,
-            MultipartFile file
+            MultipartFile file,
+            boolean isPrimary
     ) throws IOException {
 
         Product product = productRepository.findById(productId)
@@ -90,7 +91,21 @@ public class ProductImageServiceImpl implements ProductImageService {
             int displayOrder =
                     productImageRepository.countByProductId(productId);
 
+            boolean shouldBePrimary = isPrimary || (displayOrder == 0);
+
+            if (shouldBePrimary) {
+                List<ProductImage> existingImages = productImageRepository
+                        .findByProductIdOrderByDisplayOrderAscIdAsc(productId);
+                for (ProductImage existing : existingImages) {
+                    if (existing.isPrimary()) {
+                        existing.setPrimary(false);
+                        productImageRepository.save(existing);
+                    }
+                }
+            }
+
             image.setDisplayOrder(displayOrder);
+            image.setPrimary(shouldBePrimary);
 
             return productImageRepository.save(image);
 
@@ -113,6 +128,7 @@ public class ProductImageServiceImpl implements ProductImageService {
     }
 
     @Override
+    @Transactional
     public void delete(
             Long productId,
             Long imageId,
@@ -136,6 +152,9 @@ public class ProductImageServiceImpl implements ProductImageService {
 
         storageService.delete(image.getObjectKey());
 
+        if (product.getImages() != null) {
+            product.getImages().remove(image);
+        }
         productImageRepository.delete(image);
     }
 

@@ -1,5 +1,6 @@
 package com.aitechmarketplace.backend.product.image.controller;
 
+import com.aitechmarketplace.backend.common.dto.ApiResponse;
 import com.aitechmarketplace.backend.product.image.dto.ProductImageResponse;
 import com.aitechmarketplace.backend.product.image.entity.ProductImage;
 import com.aitechmarketplace.backend.product.image.service.ProductImageService;
@@ -18,7 +19,7 @@ import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/products/{productId}/images")
+@RequestMapping({"/api/v1/products/{productId}/images", "/api/products/{productId}/images"})
 public class ProductImageController {
 
     private final ProductImageService productImageService;
@@ -30,12 +31,12 @@ public class ProductImageController {
     }
 
     @PostMapping(consumes = "multipart/form-data")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ProductImageResponse upload(
+    public ResponseEntity<ApiResponse<ProductImageResponse>> upload(
             @PathVariable Long productId,
             @RequestAttribute("userId") Long userId,
             Authentication authentication,
-            @RequestPart("file") @NotNull MultipartFile file
+            @RequestPart("file") @NotNull MultipartFile file,
+            @RequestParam(value = "isPrimary", required = false, defaultValue = "false") boolean isPrimary
     ) throws IOException {
 
         boolean isAdmin = isAdmin(authentication);
@@ -44,26 +45,29 @@ public class ProductImageController {
                 productId,
                 userId,
                 isAdmin,
-                file
+                file,
+                isPrimary
         );
 
-        return ProductImageResponse.from(image);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(ProductImageResponse.from(image), "Image uploaded successfully"));
     }
 
     @GetMapping
-    public List<ProductImageResponse> findByProductId(
+    public ResponseEntity<ApiResponse<List<ProductImageResponse>>> findByProductId(
             @PathVariable Long productId
     ) {
 
-        return productImageService.findByProductId(productId)
+        List<ProductImageResponse> images = productImageService.findByProductId(productId)
                 .stream()
                 .map(ProductImageResponse::from)
                 .toList();
+
+        return ResponseEntity.ok(ApiResponse.success(images));
     }
 
     @DeleteMapping("/{imageId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(
+    public ResponseEntity<Void> delete(
             @PathVariable Long productId,
             @PathVariable Long imageId,
             @RequestAttribute("userId") Long userId,
@@ -78,6 +82,8 @@ public class ProductImageController {
                 userId,
                 isAdmin
         );
+
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{imageId}/content")

@@ -53,6 +53,22 @@ public static Specification<Product> hasCategoryId(
     };
 }
 
+public static Specification<Product> hasBrandId(
+    Long brandId
+) {
+    return (root, query, criteriaBuilder) -> {
+
+        if (brandId == null) {
+            return criteriaBuilder.conjunction();
+        }
+
+        return criteriaBuilder.equal(
+            root.get("brand").get("id"),
+            brandId
+        );
+    };
+}
+
 public static Specification<Product> priceGreaterThanOrEqual(
     BigDecimal minPrice
 ) {
