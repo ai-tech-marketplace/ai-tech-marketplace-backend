@@ -11,9 +11,11 @@ import com.aitechmarketplace.backend.common.exception.ConflictException;
 import com.aitechmarketplace.backend.common.exception.ForbiddenException;
 import com.aitechmarketplace.backend.common.exception.NotFoundException;
 import com.aitechmarketplace.backend.coupon.entity.Coupon;
-import com.aitechmarketplace.backend.coupon.entity.DiscountType;
 import com.aitechmarketplace.backend.coupon.service.CouponService;
+import com.aitechmarketplace.backend.coupon.entity.DiscountType;
+import com.aitechmarketplace.backend.event.OrderEventBridge;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.integration.redis.util.RedisLockRegistry;
 
 import java.util.concurrent.TimeUnit;
@@ -55,6 +57,7 @@ public class OrderServiceImpl implements OrderService {
     private final ProductRepository productRepository;
     private final CouponService couponService;
     private final RedisLockRegistry checkoutLockRegistry;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public OrderServiceImpl(
             OrderRepository orderRepository,
@@ -66,7 +69,8 @@ public class OrderServiceImpl implements OrderService {
             CartItemRepository cartItemRepository,
             ProductRepository productRepository,
             CouponService couponService,
-            @Qualifier("checkoutLockRegistry") RedisLockRegistry checkoutLockRegistry
+            @Qualifier("checkoutLockRegistry") RedisLockRegistry checkoutLockRegistry,
+            ApplicationEventPublisher applicationEventPublisher
     ) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -78,6 +82,7 @@ public class OrderServiceImpl implements OrderService {
         this.productRepository = productRepository;
         this.couponService = couponService;
         this.checkoutLockRegistry = checkoutLockRegistry;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @Override
@@ -183,6 +188,8 @@ public class OrderServiceImpl implements OrderService {
 
             Order savedOrder = orderRepository.save(order);
 
+            applicationEventPublisher.publishEvent(new OrderEventBridge.OrderCreatedApplicationEvent(savedOrder));
+
             Payment payment = new Payment(savedOrder, request.paymentMethod(), totalAmount);
             paymentRepository.save(payment);
 
@@ -250,6 +257,8 @@ public class OrderServiceImpl implements OrderService {
 
         order.setStatus(OrderStatus.CANCELLED);
         Order savedOrder = orderRepository.save(order);
+
+        applicationEventPublisher.publishEvent(new OrderEventBridge.OrderCancelledApplicationEvent(savedOrder, "User requested cancellation"));
 
         return OrderResponse.from(savedOrder);
     }

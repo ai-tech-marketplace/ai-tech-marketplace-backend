@@ -24,6 +24,7 @@ import com.aitechmarketplace.backend.user.entity.User;
 import com.aitechmarketplace.backend.user.repository.UserRepository;
 import org.springframework.integration.redis.util.RedisLockRegistry;
 import org.springframework.integration.support.locks.DistributedLock;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -73,6 +74,9 @@ class OrderServiceImplTest {
 
     @Mock
     private RedisLockRegistry checkoutLockRegistry;
+
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     private OrderServiceImpl orderService;
