@@ -41,14 +41,17 @@ class OrderNotificationConsumerTest {
                 List.<OrderItemEvent>of(),
                 OffsetDateTime.now()
         );
-        kafkaTemplate.send(EventTopics.ORDERS, event.orderNumber(), event).get();
+        // Use userId as key to match production DomainEventPublisher behaviour
+        kafkaTemplate.send(EventTopics.ORDERS, event.userId().toString(), event).get();
 
         // Spring Kafka passes ConsumerRecord when @Payload Object is used;
-        // verify the raw argument contains an OrderCreatedEvent with the correct orderNumber.
+        // verify the raw argument contains an OrderCreatedEvent with the correct orderNumber
+        // and that the record key equals userId (user-level partitioning).
         verify(consumer, timeout(10000)).handleOrderEvent(argThat(raw -> {
             if (raw instanceof ConsumerRecord<?, ?> cr
                     && cr.value() instanceof OrderCreatedEvent e) {
-                return e.orderNumber().equals("ORD-TEST-CONSUMER");
+                return e.orderNumber().equals("ORD-TEST-CONSUMER")
+                        && String.valueOf(event.userId()).equals(cr.key());
             }
             if (raw instanceof OrderCreatedEvent e) {
                 return e.orderNumber().equals("ORD-TEST-CONSUMER");
