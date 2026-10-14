@@ -13,7 +13,7 @@ public record UserResponse(
         String primaryRole = user.getRoles()
                 .stream()
                 .map(role -> role.getName().name())
-                .findFirst()
+                .min(java.util.Comparator.comparingInt(UserResponse::rolePriority))
                 .orElse("CUSTOMER");
 
         return new UserResponse(
@@ -23,5 +23,14 @@ public record UserResponse(
                 user.getPhone(),
                 primaryRole
         );
+    }
+
+    private static int rolePriority(String roleName) {
+        return switch (roleName) {
+            case "ADMIN" -> 1;
+            case "SELLER" -> 2;
+            case "CUSTOMER" -> 3;
+            default -> 4;
+        };
     }
 }

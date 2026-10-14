@@ -6,6 +6,7 @@ import com.aitechmarketplace.backend.auth.dto.RegisterRequest;
 import com.aitechmarketplace.backend.auth.dto.UserResponse;
 import com.aitechmarketplace.backend.auth.security.JwtService;
 import com.aitechmarketplace.backend.common.exception.BadRequestException;
+import com.aitechmarketplace.backend.common.exception.UnauthorizedException;
 import com.aitechmarketplace.backend.user.entity.Role;
 import com.aitechmarketplace.backend.user.entity.RoleName;
 import com.aitechmarketplace.backend.user.entity.User;
@@ -165,8 +166,8 @@ class AuthServiceImplTest {
         when(userService.findByEmail("unknown@example.com"))
             .thenReturn(Optional.empty());
 
-        BadRequestException exception = assertThrows(
-            BadRequestException.class,
+        UnauthorizedException exception = assertThrows(
+            UnauthorizedException.class,
             () -> authService.login(loginRequest)
         );
 
@@ -195,8 +196,8 @@ class AuthServiceImplTest {
         when(passwordEncoder.matches("wrong-password", "hashed-password"))
             .thenReturn(false);
 
-        BadRequestException exception = assertThrows(
-            BadRequestException.class,
+        UnauthorizedException exception = assertThrows(
+            UnauthorizedException.class,
             () -> authService.login(loginRequest)
         );
 

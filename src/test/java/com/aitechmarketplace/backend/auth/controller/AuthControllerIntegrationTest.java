@@ -108,7 +108,7 @@ class AuthControllerIntegrationTest {
                         }
                         """)
             )
-            .andExpect(status().isBadRequest())
+            .andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.success", is(false)))
             .andExpect(jsonPath("$.errorCode", is("AUTH_INVALID_CREDENTIALS")));
     }

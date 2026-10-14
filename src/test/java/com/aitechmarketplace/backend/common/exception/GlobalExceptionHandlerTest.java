@@ -58,4 +58,32 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().message()).isEqualTo("Email already exists");
         assertThat(response.getBody().errorCode()).isEqualTo("CONFLICT");
     }
+
+    @Test
+    void handleUnauthorizedException_shouldReturnErrorResponse() {
+        UnauthorizedException exception = new UnauthorizedException("Invalid credentials", "AUTH_INVALID_CREDENTIALS");
+
+        ResponseEntity<ErrorResponse> response = exceptionHandler.handleUnauthorizedException(exception);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().success()).isFalse();
+        assertThat(response.getBody().data()).isNull();
+        assertThat(response.getBody().message()).isEqualTo("Invalid credentials");
+        assertThat(response.getBody().errorCode()).isEqualTo("AUTH_INVALID_CREDENTIALS");
+    }
+
+    @Test
+    void handleIllegalArgumentException_shouldReturnBadRequest() {
+        IllegalArgumentException exception = new IllegalArgumentException("Bad argument");
+
+        ResponseEntity<ErrorResponse> response = exceptionHandler.handleIllegalArgumentException(exception);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().success()).isFalse();
+        assertThat(response.getBody().data()).isNull();
+        assertThat(response.getBody().message()).isEqualTo("Bad argument");
+        assertThat(response.getBody().errorCode()).isEqualTo("BAD_REQUEST");
+    }
 }

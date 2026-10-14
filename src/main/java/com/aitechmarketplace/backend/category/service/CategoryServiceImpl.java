@@ -5,7 +5,7 @@ import com.aitechmarketplace.backend.category.repository.CategoryRepository;
 import com.aitechmarketplace.backend.common.exception.ConflictException;
 import com.aitechmarketplace.backend.common.exception.NotFoundException;
 import com.aitechmarketplace.backend.common.util.SlugUtils;
-import com.aitechmarketplace.backend.product.entity.Product;
+import com.aitechmarketplace.backend.product.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,11 +17,14 @@ import java.util.Optional;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final ProductRepository productRepository;
 
     public CategoryServiceImpl(
-        CategoryRepository categoryRepository
+        CategoryRepository categoryRepository,
+        ProductRepository productRepository
     ) {
         this.categoryRepository = categoryRepository;
+        this.productRepository = productRepository;
     }
 
     @Override
@@ -112,9 +115,7 @@ public class CategoryServiceImpl implements CategoryService {
                 new NotFoundException("Category not found", "CATEGORY_NOT_FOUND")
             );
 
-        boolean hasActiveProducts = category.getProducts() != null && category.getProducts().stream()
-                .anyMatch(Product::isActive);
-
+        boolean hasActiveProducts = productRepository.existsByCategoryIdAndStatus(categoryId, "ACTIVE");
         if (hasActiveProducts) {
             throw new ConflictException(
                 "Cannot deactivate category currently in use by active products",

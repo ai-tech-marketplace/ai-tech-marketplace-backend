@@ -17,8 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -178,10 +178,33 @@ public class CartServiceImpl implements CartService {
     private CartResponse mapToCartResponse(Cart cart) {
         List<CartItem> items = cartItemRepository.findByCartIdOrderByIdAsc(cart.getId());
 
+        List<Long> productIds = items.stream()
+                .map(item -> item.getProduct().getId())
+                .distinct()
+                .toList();
+
+        Map<Long, String> thumbnailMap = new HashMap<>();
+        if (!productIds.isEmpty()) {
+            List<ProductImage> allImages = productImageRepository.findByProductIdInOrderByDisplayOrderAscIdAsc(productIds);
+            Map<Long, List<ProductImage>> imagesByProduct = allImages.stream()
+                    .collect(Collectors.groupingBy(img -> img.getProduct().getId()));
+
+            for (Map.Entry<Long, List<ProductImage>> entry : imagesByProduct.entrySet()) {
+                List<ProductImage> images = entry.getValue();
+                if (!images.isEmpty()) {
+                    ProductImage primaryOrFirst = images.stream()
+                            .filter(ProductImage::isPrimary)
+                            .findFirst()
+                            .orElse(images.get(0));
+                    thumbnailMap.put(entry.getKey(), "/api/v1/products/" + entry.getKey() + "/images/" + primaryOrFirst.getId() + "/content");
+                }
+            }
+        }
+
         List<CartItemResponse> itemResponses = items.stream()
                 .map(item -> {
                     Product product = item.getProduct();
-                    String thumbnailUrl = resolveThumbnailUrl(product.getId());
+                    String thumbnailUrl = thumbnailMap.get(product.getId());
 
                     CartProductResponse productResponse = new CartProductResponse(
                             product.getId(),
@@ -212,17 +235,5 @@ public class CartServiceImpl implements CartService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return new CartResponse(cart.getId(), itemResponses, totalItems, totalAmount);
-    }
-
-    private String resolveThumbnailUrl(Long productId) {
-        List<ProductImage> images = productImageRepository.findByProductIdOrderByDisplayOrderAscIdAsc(productId);
-        if (images.isEmpty()) {
-            return null;
-        }
-        ProductImage primaryOrFirst = images.stream()
-                .filter(ProductImage::isPrimary)
-                .findFirst()
-                .orElse(images.get(0));
-        return "/api/v1/products/" + productId + "/images/" + primaryOrFirst.getId() + "/content";
     }
 }

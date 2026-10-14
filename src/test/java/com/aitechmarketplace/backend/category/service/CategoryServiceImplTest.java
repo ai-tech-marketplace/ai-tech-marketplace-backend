@@ -5,6 +5,7 @@ import com.aitechmarketplace.backend.category.repository.CategoryRepository;
 import com.aitechmarketplace.backend.common.exception.ConflictException;
 import com.aitechmarketplace.backend.common.exception.NotFoundException;
 import com.aitechmarketplace.backend.product.entity.Product;
+import com.aitechmarketplace.backend.product.repository.ProductRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,6 +24,9 @@ class CategoryServiceImplTest {
 
     @Mock
     private CategoryRepository categoryRepository;
+
+    @Mock
+    private ProductRepository productRepository;
 
     @InjectMocks
     private CategoryServiceImpl categoryService;
@@ -165,6 +169,8 @@ class CategoryServiceImplTest {
 
         when(categoryRepository.findById(1L))
                 .thenReturn(Optional.of(category));
+        when(productRepository.existsByCategoryIdAndStatus(1L, "ACTIVE"))
+                .thenReturn(false);
         when(categoryRepository.save(any(Category.class)))
                 .thenReturn(category);
 
@@ -181,12 +187,10 @@ class CategoryServiceImplTest {
         category.setName("Electronics");
         category.setStatus("ACTIVE");
 
-        Product activeProduct = new Product();
-        activeProduct.setActive(true);
-        category.getProducts().add(activeProduct);
-
         when(categoryRepository.findById(1L))
                 .thenReturn(Optional.of(category));
+        when(productRepository.existsByCategoryIdAndStatus(1L, "ACTIVE"))
+                .thenReturn(true);
 
         ConflictException exception = assertThrows(
                 ConflictException.class,

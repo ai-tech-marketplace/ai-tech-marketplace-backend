@@ -113,10 +113,9 @@ class CartServiceImplTest {
 
         ProductImage image = new ProductImage();
         ReflectionTestUtils.setField(image, "id", 55L);
-        when(productImageRepository.findByProductIdOrderByDisplayOrderAscIdAsc(10L))
+        image.setProduct(testProduct);
+        when(productImageRepository.findByProductIdInOrderByDisplayOrderAscIdAsc(List.of(10L, 20L)))
                 .thenReturn(List.of(image));
-        when(productImageRepository.findByProductIdOrderByDisplayOrderAscIdAsc(20L))
-                .thenReturn(List.of());
 
         CartResponse response = cartService.getCart(1L);
 

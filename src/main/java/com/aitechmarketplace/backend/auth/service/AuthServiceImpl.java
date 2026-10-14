@@ -6,6 +6,7 @@ import com.aitechmarketplace.backend.auth.dto.RegisterRequest;
 import com.aitechmarketplace.backend.auth.dto.UserResponse;
 import com.aitechmarketplace.backend.auth.security.JwtService;
 import com.aitechmarketplace.backend.common.exception.BadRequestException;
+import com.aitechmarketplace.backend.common.exception.UnauthorizedException;
 import com.aitechmarketplace.backend.user.entity.User;
 import com.aitechmarketplace.backend.user.service.UserService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -51,14 +52,14 @@ public class AuthServiceImpl implements AuthService {
     public LoginResponse login(LoginRequest request) {
         User user = userService.findByEmail(request.email())
             .orElseThrow(() ->
-                new BadRequestException(
+                new UnauthorizedException(
                     "Invalid email or password",
                     "AUTH_INVALID_CREDENTIALS"
                 )
             );
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new BadRequestException(
+            throw new UnauthorizedException(
                 "Invalid email or password",
                 "AUTH_INVALID_CREDENTIALS"
             );

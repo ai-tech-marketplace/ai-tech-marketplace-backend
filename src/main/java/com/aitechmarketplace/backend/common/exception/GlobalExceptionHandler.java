@@ -29,11 +29,19 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(message, "INVALID_REQUEST_PAYLOAD"));
     }
 
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ErrorResponse> handleUnauthorizedException(UnauthorizedException exception) {
+        String errorCode = exception.getErrorCode() != null ? exception.getErrorCode() : "UNAUTHORIZED";
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(ErrorResponse.of(exception.getMessage(), errorCode));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException exception) {
         return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .body(ErrorResponse.of(exception.getMessage(), "AUTH_INVALID_CREDENTIALS"));
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(exception.getMessage(), "BAD_REQUEST"));
     }
 
     @ExceptionHandler(NotFoundException.class)
