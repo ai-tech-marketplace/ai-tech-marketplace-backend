@@ -22,6 +22,8 @@ import com.aitechmarketplace.backend.product.entity.Product;
 import com.aitechmarketplace.backend.product.repository.ProductRepository;
 import com.aitechmarketplace.backend.user.entity.User;
 import com.aitechmarketplace.backend.user.repository.UserRepository;
+import org.springframework.integration.redis.util.RedisLockRegistry;
+import org.springframework.integration.support.locks.DistributedLock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,6 +71,9 @@ class OrderServiceImplTest {
     @Mock
     private CouponService couponService;
 
+    @Mock
+    private RedisLockRegistry checkoutLockRegistry;
+
     @InjectMocks
     private OrderServiceImpl orderService;
 
@@ -108,6 +113,13 @@ class OrderServiceImplTest {
         cartItem = new CartItem(cart, product, 2);
 
         lenient().when(productRepository.findByIdForUpdate(200L)).thenAnswer(inv -> Optional.of(product));
+
+        DistributedLock mockLock = mock(DistributedLock.class);
+        try {
+            lenient().when(mockLock.tryLock(anyLong(), any())).thenReturn(true);
+        } catch (InterruptedException ignored) {
+        }
+        lenient().when(checkoutLockRegistry.obtain(anyString())).thenReturn(mockLock);
     }
 
     @Test

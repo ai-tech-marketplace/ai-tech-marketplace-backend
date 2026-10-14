@@ -7,11 +7,17 @@ import com.aitechmarketplace.backend.cart.entity.CartItem;
 import com.aitechmarketplace.backend.cart.repository.CartItemRepository;
 import com.aitechmarketplace.backend.cart.repository.CartRepository;
 import com.aitechmarketplace.backend.common.exception.BadRequestException;
+import com.aitechmarketplace.backend.common.exception.ConflictException;
 import com.aitechmarketplace.backend.common.exception.ForbiddenException;
 import com.aitechmarketplace.backend.common.exception.NotFoundException;
 import com.aitechmarketplace.backend.coupon.entity.Coupon;
 import com.aitechmarketplace.backend.coupon.entity.DiscountType;
 import com.aitechmarketplace.backend.coupon.service.CouponService;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.integration.redis.util.RedisLockRegistry;
+
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 import com.aitechmarketplace.backend.order.dto.OrderCreateRequest;
 import com.aitechmarketplace.backend.order.dto.OrderPageResponse;
 import com.aitechmarketplace.backend.order.dto.OrderResponse;
@@ -48,6 +54,7 @@ public class OrderServiceImpl implements OrderService {
     private final CartItemRepository cartItemRepository;
     private final ProductRepository productRepository;
     private final CouponService couponService;
+    private final RedisLockRegistry checkoutLockRegistry;
 
     public OrderServiceImpl(
             OrderRepository orderRepository,
@@ -58,7 +65,8 @@ public class OrderServiceImpl implements OrderService {
             CartRepository cartRepository,
             CartItemRepository cartItemRepository,
             ProductRepository productRepository,
-            CouponService couponService
+            CouponService couponService,
+            @Qualifier("checkoutLockRegistry") RedisLockRegistry checkoutLockRegistry
     ) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -69,110 +77,127 @@ public class OrderServiceImpl implements OrderService {
         this.cartItemRepository = cartItemRepository;
         this.productRepository = productRepository;
         this.couponService = couponService;
+        this.checkoutLockRegistry = checkoutLockRegistry;
     }
 
     @Override
     @Transactional
     public OrderResponse createOrder(Long userId, OrderCreateRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User not found", "USER_NOT_FOUND"));
-
-        Address address = addressRepository.findById(request.addressId())
-                .orElseThrow(() -> new NotFoundException("Address not found", "ADDRESS_NOT_FOUND"));
-
-        if (!address.getUser().getId().equals(userId)) {
-            throw new ForbiddenException("You do not have permission to use this address", "FORBIDDEN");
+        Lock lock = checkoutLockRegistry.obtain("user:" + userId);
+        boolean acquired = false;
+        try {
+            acquired = lock.tryLock(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ConflictException("Checkout interrupted", "CHECKOUT_INTERRUPTED");
+        }
+        if (!acquired) {
+            throw new ConflictException("Checkout already in progress", "CHECKOUT_IN_PROGRESS");
         }
 
-        Cart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new BadRequestException("Cart is empty", "CART_EMPTY"));
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new NotFoundException("User not found", "USER_NOT_FOUND"));
 
-        List<CartItem> cartItems = cartItemRepository.findByCartIdOrderByIdAsc(cart.getId());
-        if (cartItems.isEmpty()) {
-            throw new BadRequestException("Cart is empty", "CART_EMPTY");
-        }
+            Address address = addressRepository.findById(request.addressId())
+                    .orElseThrow(() -> new NotFoundException("Address not found", "ADDRESS_NOT_FOUND"));
 
-        BigDecimal subtotal = BigDecimal.ZERO;
-        for (CartItem item : cartItems) {
-            Product product = productRepository.findByIdForUpdate(item.getProduct().getId())
-                    .orElseThrow(() -> new BadRequestException("Product not found", "PRODUCT_NOT_FOUND"));
-            if (!product.isActive()) {
-                throw new BadRequestException("Product '" + product.getName() + "' is no longer available", "PRODUCT_NOT_AVAILABLE");
+            if (!address.getUser().getId().equals(userId)) {
+                throw new ForbiddenException("You do not have permission to use this address", "FORBIDDEN");
             }
-            if (product.getStockQuantity() < item.getQuantity()) {
-                throw new BadRequestException("Insufficient stock for product '" + product.getName() + "'", "OUT_OF_STOCK");
+
+            Cart cart = cartRepository.findByUserId(userId)
+                    .orElseThrow(() -> new BadRequestException("Cart is empty", "CART_EMPTY"));
+
+            List<CartItem> cartItems = cartItemRepository.findByCartIdOrderByIdAsc(cart.getId());
+            if (cartItems.isEmpty()) {
+                throw new BadRequestException("Cart is empty", "CART_EMPTY");
             }
-            BigDecimal itemTotal = product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
-            subtotal = subtotal.add(itemTotal);
+
+            BigDecimal subtotal = BigDecimal.ZERO;
+            for (CartItem item : cartItems) {
+                Product product = productRepository.findByIdForUpdate(item.getProduct().getId())
+                        .orElseThrow(() -> new BadRequestException("Product not found", "PRODUCT_NOT_FOUND"));
+                if (!product.isActive()) {
+                    throw new BadRequestException("Product '" + product.getName() + "' is no longer available", "PRODUCT_NOT_AVAILABLE");
+                }
+                if (product.getStockQuantity() < item.getQuantity()) {
+                    throw new BadRequestException("Insufficient stock for product '" + product.getName() + "'", "OUT_OF_STOCK");
+                }
+                BigDecimal itemTotal = product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+                subtotal = subtotal.add(itemTotal);
+            }
+
+            BigDecimal shippingFee = STANDARD_SHIPPING_FEE;
+            BigDecimal discountAmount = BigDecimal.ZERO;
+            Coupon coupon = null;
+
+            if (request.couponCode() != null && !request.couponCode().isBlank()) {
+                coupon = couponService.getValidCouponForOrder(request.couponCode().trim(), userId, subtotal, shippingFee);
+                discountAmount = calculateDiscount(coupon, subtotal, shippingFee);
+            }
+
+            BigDecimal totalAmount = subtotal.add(shippingFee).subtract(discountAmount);
+            if (totalAmount.compareTo(BigDecimal.ZERO) < 0) {
+                totalAmount = BigDecimal.ZERO;
+            }
+
+            String orderNumber = generateOrderNumber();
+
+            Order order = new Order();
+            order.setOrderNumber(orderNumber);
+            order.setUser(user);
+            order.setStatus(OrderStatus.PENDING);
+            order.setPaymentMethod(request.paymentMethod());
+            order.setPaymentStatus(PaymentStatus.PENDING);
+            order.setSubtotal(subtotal);
+            order.setShippingFee(shippingFee);
+            order.setDiscountAmount(discountAmount);
+            order.setTotalAmount(totalAmount);
+            order.setShippingRecipientName(address.getRecipientName());
+            order.setShippingPhone(address.getPhone());
+            order.setShippingAddress(address.getAddressLine());
+            order.setShippingWard(address.getWard());
+            order.setShippingDistrict(address.getDistrict());
+            order.setShippingCity(address.getCity());
+            order.setShippingCountry(address.getCountry());
+            order.setNotes(request.notes());
+
+            for (CartItem item : cartItems) {
+                Product product = productRepository.findByIdForUpdate(item.getProduct().getId())
+                        .orElseThrow(() -> new BadRequestException("Product not found", "PRODUCT_NOT_FOUND"));
+                OrderItem orderItem = new OrderItem(
+                        order,
+                        product,
+                        product.getName(),
+                        product.getSku(),
+                        item.getQuantity(),
+                        product.getPrice(),
+                        product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()))
+                );
+                order.addItem(orderItem);
+
+                product.setStockQuantity(product.getStockQuantity() - item.getQuantity());
+                productRepository.save(product);
+            }
+
+            Order savedOrder = orderRepository.save(order);
+
+            Payment payment = new Payment(savedOrder, request.paymentMethod(), totalAmount);
+            paymentRepository.save(payment);
+
+            if (coupon != null) {
+                couponService.recordCouponUsage(coupon, userId, savedOrder.getId(), discountAmount);
+            }
+
+            cartItemRepository.deleteByCartId(cart.getId());
+
+            String paymentUrl = generatePaymentUrl(request.paymentMethod(), orderNumber);
+
+            return OrderResponse.from(savedOrder, paymentUrl);
+        } finally {
+            lock.unlock();
         }
-
-        BigDecimal shippingFee = STANDARD_SHIPPING_FEE;
-        BigDecimal discountAmount = BigDecimal.ZERO;
-        Coupon coupon = null;
-
-        if (request.couponCode() != null && !request.couponCode().isBlank()) {
-            coupon = couponService.getValidCouponForOrder(request.couponCode().trim(), userId, subtotal, shippingFee);
-            discountAmount = calculateDiscount(coupon, subtotal, shippingFee);
-        }
-
-        BigDecimal totalAmount = subtotal.add(shippingFee).subtract(discountAmount);
-        if (totalAmount.compareTo(BigDecimal.ZERO) < 0) {
-            totalAmount = BigDecimal.ZERO;
-        }
-
-        String orderNumber = generateOrderNumber();
-
-        Order order = new Order();
-        order.setOrderNumber(orderNumber);
-        order.setUser(user);
-        order.setStatus(OrderStatus.PENDING);
-        order.setPaymentMethod(request.paymentMethod());
-        order.setPaymentStatus(PaymentStatus.PENDING);
-        order.setSubtotal(subtotal);
-        order.setShippingFee(shippingFee);
-        order.setDiscountAmount(discountAmount);
-        order.setTotalAmount(totalAmount);
-        order.setShippingRecipientName(address.getRecipientName());
-        order.setShippingPhone(address.getPhone());
-        order.setShippingAddress(address.getAddressLine());
-        order.setShippingWard(address.getWard());
-        order.setShippingDistrict(address.getDistrict());
-        order.setShippingCity(address.getCity());
-        order.setShippingCountry(address.getCountry());
-        order.setNotes(request.notes());
-
-        for (CartItem item : cartItems) {
-            Product product = productRepository.findByIdForUpdate(item.getProduct().getId())
-                    .orElseThrow(() -> new BadRequestException("Product not found", "PRODUCT_NOT_FOUND"));
-            OrderItem orderItem = new OrderItem(
-                    order,
-                    product,
-                    product.getName(),
-                    product.getSku(),
-                    item.getQuantity(),
-                    product.getPrice(),
-                    product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()))
-            );
-            order.addItem(orderItem);
-
-            product.setStockQuantity(product.getStockQuantity() - item.getQuantity());
-            productRepository.save(product);
-        }
-
-        Order savedOrder = orderRepository.save(order);
-
-        Payment payment = new Payment(savedOrder, request.paymentMethod(), totalAmount);
-        paymentRepository.save(payment);
-
-        if (coupon != null) {
-            couponService.recordCouponUsage(coupon, userId, savedOrder.getId(), discountAmount);
-        }
-
-        cartItemRepository.deleteByCartId(cart.getId());
-
-        String paymentUrl = generatePaymentUrl(request.paymentMethod(), orderNumber);
-
-        return OrderResponse.from(savedOrder, paymentUrl);
     }
 
     @Override
