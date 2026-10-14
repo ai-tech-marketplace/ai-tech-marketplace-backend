@@ -19,7 +19,7 @@ import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping({"/api/v1/products/{productId}/images", "/api/products/{productId}/images"})
+@RequestMapping("/api/v1/products/{productId}/images")
 public class ProductImageController {
 
     private final ProductImageService productImageService;
@@ -110,6 +110,7 @@ public class ProductImageController {
     }
 
     private boolean isAdmin(Authentication authentication) {
+        if (authentication == null) return false;
         return authentication.getAuthorities()
                 .stream()
                 .anyMatch(authority ->

@@ -393,16 +393,7 @@ class CartControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.totalItems", is(0)));
     }
 
-    @Test
-    void compatibility_bothRoutePrefixesShouldWork() throws Exception {
-        User user = createUser();
-        String token = login(user.getEmail());
 
-        mockMvc.perform(get("/api/cart")
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success", is(true)));
-    }
 
     @Autowired
     private com.aitechmarketplace.backend.user.service.UserService userService;

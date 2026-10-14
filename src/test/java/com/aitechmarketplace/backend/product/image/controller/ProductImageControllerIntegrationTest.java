@@ -147,7 +147,7 @@ class ProductImageControllerIntegrationTest {
 
         String response = mockMvc.perform(
                 multipart(
-                        "/api/products/{productId}/images",
+                        "/api/v1/products/{productId}/images",
                         productId
                 )
                         .file(file)
@@ -297,7 +297,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 multipart(
-                        "/api/products/{productId}/images",
+                        "/api/v1/products/{productId}/images",
                         productId
                 )
                         .file(file)
@@ -336,7 +336,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 multipart(
-                        "/api/products/{productId}/images",
+                        "/api/v1/products/{productId}/images",
                         productId
                 )
                         .file(file)
@@ -381,7 +381,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 multipart(
-                        "/api/products/{productId}/images",
+                        "/api/v1/products/{productId}/images",
                         productId
                 )
                         .file(file)
@@ -413,7 +413,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 multipart(
-                        "/api/products/{productId}/images",
+                        "/api/v1/products/{productId}/images",
                         productId
                 )
                         .file(file)
@@ -449,7 +449,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 multipart(
-                        "/api/products/{productId}/images",
+                        "/api/v1/products/{productId}/images",
                         productId
                 )
                         .file(file)
@@ -485,7 +485,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 multipart(
-                        "/api/products/{productId}/images",
+                        "/api/v1/products/{productId}/images",
                         productId
                 )
                         .file(file)
@@ -513,7 +513,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 multipart(
-                        "/api/products/{productId}/images",
+                        "/api/v1/products/{productId}/images",
                         999999999L
                 )
                         .file(file)
@@ -553,7 +553,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 get(
-                        "/api/products/{productId}/images",
+                        "/api/v1/products/{productId}/images",
                         productId
                 )
                         .header(
@@ -605,7 +605,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 get(
-                        "/api/products/{productId}/images",
+                        "/api/v1/products/{productId}/images",
                         999999999L
                 )
                         .header(
@@ -647,7 +647,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 get(
-                        "/api/products/{productId}/images/{imageId}/content",
+                        "/api/v1/products/{productId}/images/{imageId}/content",
                         productId,
                         imageId
                 )
@@ -685,7 +685,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 get(
-                        "/api/products/{productId}/images/{imageId}/content",
+                        "/api/v1/products/{productId}/images/{imageId}/content",
                         productId,
                         999999999L
                 )
@@ -708,7 +708,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 get(
-                        "/api/products/{productId}/images/{imageId}/content",
+                        "/api/v1/products/{productId}/images/{imageId}/content",
                         999999999L,
                         999999999L
                 )
@@ -751,7 +751,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 delete(
-                        "/api/products/{productId}/images/{imageId}",
+                        "/api/v1/products/{productId}/images/{imageId}",
                         productId,
                         imageId
                 )
@@ -764,7 +764,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 get(
-                        "/api/products/{productId}/images",
+                        "/api/v1/products/{productId}/images",
                         productId
                 )
                         .header(
@@ -782,7 +782,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 get(
-                        "/api/products/{productId}/images/{imageId}/content",
+                        "/api/v1/products/{productId}/images/{imageId}/content",
                         productId,
                         imageId
                 )
@@ -830,7 +830,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 delete(
-                        "/api/products/{productId}/images/{imageId}",
+                        "/api/v1/products/{productId}/images/{imageId}",
                         productId,
                         imageId
                 )
@@ -844,7 +844,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 get(
-                        "/api/products/{productId}/images",
+                        "/api/v1/products/{productId}/images",
                         productId
                 )
                         .header(
@@ -898,7 +898,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 delete(
-                        "/api/products/{productId}/images/{imageId}",
+                        "/api/v1/products/{productId}/images/{imageId}",
                         productId,
                         imageId
                 )
@@ -911,7 +911,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 get(
-                        "/api/products/{productId}/images",
+                        "/api/v1/products/{productId}/images",
                         productId
                 )
                         .header(
@@ -944,7 +944,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 delete(
-                        "/api/products/{productId}/images/{imageId}",
+                        "/api/v1/products/{productId}/images/{imageId}",
                         productId,
                         999999999L
                 )
@@ -967,7 +967,7 @@ class ProductImageControllerIntegrationTest {
 
         mockMvc.perform(
                 delete(
-                        "/api/products/{productId}/images/{imageId}",
+                        "/api/v1/products/{productId}/images/{imageId}",
                         999999999L,
                         999999999L
                 )
@@ -990,7 +990,7 @@ class ProductImageControllerIntegrationTest {
 
         return mockMvc.perform(
                 multipart(
-                        "/api/products/{productId}/images",
+                        "/api/v1/products/{productId}/images",
                         productId
                 )
                         .file(file)
@@ -1086,6 +1086,16 @@ class ProductImageControllerIntegrationTest {
                         "Image",
                         "Tester"
                 );
+
+        Role sellerRole =
+                roleRepository
+                        .findByName(RoleName.SELLER)
+                        .orElseThrow();
+
+        user.getRoles().add(sellerRole);
+
+        user =
+                userRepository.save(user);
 
         createdUserIds.add(user.getId());
 

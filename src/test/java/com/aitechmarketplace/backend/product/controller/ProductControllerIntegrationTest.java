@@ -703,6 +703,10 @@ class ProductControllerIntegrationTest {
             null
         );
 
+        Role sellerRole = roleRepository.findByName(RoleName.SELLER).orElseThrow();
+        user.getRoles().add(sellerRole);
+        user = userRepository.save(user);
+
         createdUserIds.add(user.getId());
         return user;
     }

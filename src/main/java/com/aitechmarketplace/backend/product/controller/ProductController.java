@@ -27,7 +27,7 @@ public class ProductController {
         this.productService = productService;
     }
 
-    @GetMapping({"/api/v1/products", "/api/products"})
+    @GetMapping("/api/v1/products")
     public ResponseEntity<ApiResponse<ProductPageResponse>> search(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
@@ -55,7 +55,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @GetMapping({"/api/v1/products/{id}", "/api/products/{id}"})
+    @GetMapping("/api/v1/products/{id}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> findById(@PathVariable Long id) {
         Product product = productService.findById(id)
                 .orElseThrow(() -> new NotFoundException("Product not found", "PRODUCT_NOT_FOUND"));
@@ -63,7 +63,8 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(ProductDetailResponse.from(product)));
     }
 
-    @PostMapping({"/api/v1/products", "/api/products"})
+    @PostMapping("/api/v1/products")
+    @PreAuthorize("hasAnyRole('SELLER', 'ADMIN')")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> create(
             @RequestAttribute("userId") Long userId,
             @Valid @RequestBody ProductCreateRequest request
@@ -84,7 +85,7 @@ public class ProductController {
                 .body(ApiResponse.success(ProductDetailResponse.from(product), "Product created successfully"));
     }
 
-    @GetMapping({"/api/v1/products/my", "/api/products/my"})
+    @GetMapping("/api/v1/products/my")
     public ResponseEntity<ApiResponse<List<ProductSummaryResponse>>> findMyProducts(
             @RequestAttribute("userId") Long userId
     ) {
@@ -96,7 +97,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(list));
     }
 
-    @GetMapping({"/api/v1/products/seller/{sellerId}", "/api/products/seller/{sellerId}"})
+    @GetMapping("/api/v1/products/seller/{sellerId}")
     public ResponseEntity<ApiResponse<List<ProductSummaryResponse>>> findBySellerId(
             @PathVariable Long sellerId
     ) {
@@ -108,7 +109,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(list));
     }
 
-    @PutMapping({"/api/v1/products/{id}", "/api/products/{id}"})
+    @PutMapping("/api/v1/products/{id}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> update(
             @PathVariable Long id,
             @RequestAttribute("userId") Long userId,
@@ -131,7 +132,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(ProductDetailResponse.from(product), "Product updated successfully"));
     }
 
-    @PatchMapping({"/api/v1/products/{id}/stock", "/api/products/{id}/stock"})
+    @PatchMapping("/api/v1/products/{id}/stock")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> updateStock(
             @PathVariable Long id,
             @RequestAttribute("userId") Long userId,
@@ -143,7 +144,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(ProductDetailResponse.from(product), "Product stock updated successfully"));
     }
 
-    @DeleteMapping({"/api/v1/products/{id}", "/api/products/{id}"})
+    @DeleteMapping("/api/v1/products/{id}")
     public ResponseEntity<Void> deactivate(
             @PathVariable Long id,
             @RequestAttribute("userId") Long userId,
