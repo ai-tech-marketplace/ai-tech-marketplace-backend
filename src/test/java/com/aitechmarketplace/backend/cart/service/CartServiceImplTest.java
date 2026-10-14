@@ -125,8 +125,10 @@ class CartServiceImplTest {
         assertThat(response.totalItems()).isEqualTo(3);
         assertThat(response.totalAmount()).isEqualByComparingTo(new BigDecimal("40500000.00"));
         assertThat(response.items().get(0).product().thumbnailUrl())
-                .isEqualTo("/api/products/10/images/55/content");
+                .isEqualTo("/api/v1/products/10/images/55/content");
+        assertThat(response.items().get(0).isAvailable()).isTrue();
         assertThat(response.items().get(1).product().thumbnailUrl()).isNull();
+        assertThat(response.items().get(1).isAvailable()).isTrue();
     }
 
     @Test
@@ -285,5 +287,66 @@ class CartServiceImplTest {
         cartService.clearCart(1L);
 
         verify(cartItemRepository).deleteByCartId(100L);
+    }
+
+    @Test
+    void merge_shouldClampQuantityWhenExceedsStock() {
+        Cart cart = new Cart(testUser);
+        ReflectionTestUtils.setField(cart, "id", 100L);
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
+
+        // testProduct has stock = 10
+        when(productRepository.findById(10L)).thenReturn(Optional.of(testProduct));
+        // Existing item has quantity = 8
+        CartItem existingItem = new CartItem(cart, testProduct, 8);
+        when(cartItemRepository.findByCartIdAndProductId(100L, 10L)).thenReturn(Optional.of(existingItem));
+        when(cartItemRepository.findByCartIdOrderByIdAsc(100L)).thenReturn(List.of(existingItem));
+
+        // Requesting 5 more -> 8 + 5 = 13 > 10 -> clamped to 10
+        com.aitechmarketplace.backend.cart.dto.CartMergeRequest request =
+                new com.aitechmarketplace.backend.cart.dto.CartMergeRequest(
+                        List.of(new com.aitechmarketplace.backend.cart.dto.CartItemAddRequest(10L, 5))
+                );
+
+        CartResponse response = cartService.merge(1L, request);
+
+        assertThat(existingItem.getQuantity()).isEqualTo(10);
+        verify(cartItemRepository).save(existingItem);
+    }
+
+    @Test
+    void merge_shouldSkipInactiveOrZeroStockProducts() {
+        Cart cart = new Cart(testUser);
+        ReflectionTestUtils.setField(cart, "id", 100L);
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
+
+        Product inactiveProduct = new Product();
+        ReflectionTestUtils.setField(inactiveProduct, "id", 20L);
+        inactiveProduct.setActive(false);
+        inactiveProduct.setStockQuantity(10);
+
+        Product zeroStockProduct = new Product();
+        ReflectionTestUtils.setField(zeroStockProduct, "id", 30L);
+        zeroStockProduct.setActive(true);
+        zeroStockProduct.setStockQuantity(0);
+
+        when(productRepository.findById(20L)).thenReturn(Optional.of(inactiveProduct));
+        when(productRepository.findById(30L)).thenReturn(Optional.of(zeroStockProduct));
+        when(productRepository.findById(999L)).thenReturn(Optional.empty());
+        when(cartItemRepository.findByCartIdOrderByIdAsc(100L)).thenReturn(List.of());
+
+        com.aitechmarketplace.backend.cart.dto.CartMergeRequest request =
+                new com.aitechmarketplace.backend.cart.dto.CartMergeRequest(
+                        List.of(
+                                new com.aitechmarketplace.backend.cart.dto.CartItemAddRequest(20L, 2),
+                                new com.aitechmarketplace.backend.cart.dto.CartItemAddRequest(30L, 1),
+                                new com.aitechmarketplace.backend.cart.dto.CartItemAddRequest(999L, 5)
+                        )
+                );
+
+        CartResponse response = cartService.merge(1L, request);
+
+        verify(cartItemRepository, never()).save(any());
+        assertThat(response.items()).isEmpty();
     }
 }
