@@ -106,6 +106,8 @@ class OrderServiceImplTest {
         product.setActive(true);
 
         cartItem = new CartItem(cart, product, 2);
+
+        lenient().when(productRepository.findByIdForUpdate(200L)).thenAnswer(inv -> Optional.of(product));
     }
 
     @Test

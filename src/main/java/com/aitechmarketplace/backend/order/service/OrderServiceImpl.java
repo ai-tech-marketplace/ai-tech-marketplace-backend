@@ -94,7 +94,8 @@ public class OrderServiceImpl implements OrderService {
 
         BigDecimal subtotal = BigDecimal.ZERO;
         for (CartItem item : cartItems) {
-            Product product = item.getProduct();
+            Product product = productRepository.findByIdForUpdate(item.getProduct().getId())
+                    .orElseThrow(() -> new BadRequestException("Product not found", "PRODUCT_NOT_FOUND"));
             if (!product.isActive()) {
                 throw new BadRequestException("Product '" + product.getName() + "' is no longer available", "PRODUCT_NOT_AVAILABLE");
             }
@@ -141,7 +142,8 @@ public class OrderServiceImpl implements OrderService {
         order.setNotes(request.notes());
 
         for (CartItem item : cartItems) {
-            Product product = item.getProduct();
+            Product product = productRepository.findByIdForUpdate(item.getProduct().getId())
+                    .orElseThrow(() -> new BadRequestException("Product not found", "PRODUCT_NOT_FOUND"));
             OrderItem orderItem = new OrderItem(
                     order,
                     product,
@@ -210,10 +212,12 @@ public class OrderServiceImpl implements OrderService {
         }
 
         for (OrderItem item : order.getItems()) {
-            Product product = item.getProduct();
-            if (product != null) {
-                product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
-                productRepository.save(product);
+            if (item.getProduct() != null) {
+                Product product = productRepository.findByIdForUpdate(item.getProduct().getId()).orElse(null);
+                if (product != null) {
+                    product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
+                    productRepository.save(product);
+                }
             }
         }
 
