@@ -22,8 +22,12 @@ import org.springframework.integration.redis.util.RedisLockRegistry;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
+import com.aitechmarketplace.backend.settlement.entity.SellerOrderSettlement;
+import com.aitechmarketplace.backend.settlement.entity.SettlementStatus;
+import com.aitechmarketplace.backend.settlement.repository.SellerOrderSettlementRepository;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -36,6 +40,7 @@ public class OrderServiceImpl implements OrderService {
     private final RedisLockRegistry checkoutLockRegistry;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final CheckoutTransactionService checkoutTransactionService;
+    private final com.aitechmarketplace.backend.settlement.repository.SellerOrderSettlementRepository sellerOrderSettlementRepository;
 
     public OrderServiceImpl(
             OrderRepository orderRepository,
@@ -45,7 +50,8 @@ public class OrderServiceImpl implements OrderService {
             CouponService couponService,
             @Qualifier("checkoutLockRegistry") RedisLockRegistry checkoutLockRegistry,
             ApplicationEventPublisher applicationEventPublisher,
-            CheckoutTransactionService checkoutTransactionService
+            CheckoutTransactionService checkoutTransactionService,
+            com.aitechmarketplace.backend.settlement.repository.SellerOrderSettlementRepository sellerOrderSettlementRepository
     ) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -55,6 +61,7 @@ public class OrderServiceImpl implements OrderService {
         this.checkoutLockRegistry = checkoutLockRegistry;
         this.applicationEventPublisher = applicationEventPublisher;
         this.checkoutTransactionService = checkoutTransactionService;
+        this.sellerOrderSettlementRepository = sellerOrderSettlementRepository;
     }
 
     /**
@@ -135,6 +142,12 @@ public class OrderServiceImpl implements OrderService {
         }
 
         couponService.rollbackCouponUsage(order.getId());
+
+        List<SellerOrderSettlement> settlements = sellerOrderSettlementRepository.findByOrderId(order.getId());
+        for (SellerOrderSettlement settlement : settlements) {
+            settlement.setStatus(SettlementStatus.CANCELLED);
+        }
+        sellerOrderSettlementRepository.saveAll(settlements);
 
         order.setStatus(OrderStatus.CANCELLED);
         Order savedOrder = orderRepository.save(order);

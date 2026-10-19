@@ -62,6 +62,8 @@ public class CheckoutTransactionService {
     private final ProductRepository productRepository;
     private final CouponService couponService;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final com.aitechmarketplace.backend.commission.service.CommissionSettingService commissionSettingService;
+    private final com.aitechmarketplace.backend.settlement.repository.SellerOrderSettlementRepository sellerOrderSettlementRepository;
 
     public CheckoutTransactionService(
             OrderRepository orderRepository,
@@ -73,7 +75,9 @@ public class CheckoutTransactionService {
             CartItemRepository cartItemRepository,
             ProductRepository productRepository,
             CouponService couponService,
-            ApplicationEventPublisher applicationEventPublisher
+            ApplicationEventPublisher applicationEventPublisher,
+            com.aitechmarketplace.backend.commission.service.CommissionSettingService commissionSettingService,
+            com.aitechmarketplace.backend.settlement.repository.SellerOrderSettlementRepository sellerOrderSettlementRepository
     ) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -85,6 +89,8 @@ public class CheckoutTransactionService {
         this.productRepository = productRepository;
         this.couponService = couponService;
         this.applicationEventPublisher = applicationEventPublisher;
+        this.commissionSettingService = commissionSettingService;
+        this.sellerOrderSettlementRepository = sellerOrderSettlementRepository;
     }
 
     /**
@@ -181,6 +187,29 @@ public class CheckoutTransactionService {
         }
 
         Order savedOrder = orderRepository.save(order);
+
+        for (OrderItem item : savedOrder.getItems()) {
+            Product product = item.getProduct();
+            Long sellerId = (product != null && product.getSeller() != null) ? product.getSeller().getId() : null;
+            Long categoryId = (product != null && product.getCategory() != null) ? product.getCategory().getId() : null;
+            BigDecimal commissionRate = commissionSettingService.resolveCommissionRate(sellerId, categoryId);
+            BigDecimal itemSubtotal = item.getSubtotal();
+            BigDecimal commissionAmount = itemSubtotal.multiply(commissionRate).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal sellerNetAmount = itemSubtotal.subtract(commissionAmount);
+
+            com.aitechmarketplace.backend.settlement.entity.SellerOrderSettlement settlement =
+                    new com.aitechmarketplace.backend.settlement.entity.SellerOrderSettlement(
+                            savedOrder.getId(),
+                            item.getId(),
+                            sellerId,
+                            itemSubtotal,
+                            commissionRate,
+                            commissionAmount,
+                            BigDecimal.ZERO,
+                            sellerNetAmount
+                    );
+            sellerOrderSettlementRepository.save(settlement);
+        }
 
         applicationEventPublisher.publishEvent(new OrderEventBridge.OrderCreatedApplicationEvent(savedOrder));
 
