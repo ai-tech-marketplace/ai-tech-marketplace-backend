@@ -81,6 +81,7 @@ Database schema evolution is managed via Flyway migrations under `src/main/resou
 | `V9__create_orders.sql` | `orders`, `order_items`, `payments` | Orders, immutable item snapshots, and payment records. |
 | `V10__create_commission_and_settlements.sql` | `commission_settings`, `seller_order_settlements` | Platform commission hierarchy settings and transactional seller order settlements. |
 | `V11__create_reviews.sql` | `reviews`, `review_images`, `review_helpful_votes` | Product reviews, ratings, verified purchase badge, photo attachments, helpful votes, and seller replies. |
+| `V12__enhance_payments_and_online_gateways.sql` | `payments` | Enhanced payment gateway transaction tracking, unique references, and indexes for VNPay, MoMo, and Stripe. |
 
 ---
 
@@ -151,6 +152,15 @@ Base path: `/api/v1`
 * `GET    /api/v1/orders` — View customer's order history
 * `GET    /api/v1/orders/{id}` — View order details and items
 * `POST   /api/v1/orders/{id}/cancel` — Cancel order (releases reserved stock & coupon quota)
+
+### Online Payment Gateways (`/api/v1/payments`)
+* `POST   /api/v1/payments/{orderId}/initiate` — Initiate online payment session (`VNPAY`, `MOMO`, `STRIPE`)
+* `GET    /api/v1/payments/vnpay/ipn` — Asynchronous server IPN confirmation for VNPay (HMAC-SHA512 checksum)
+* `GET    /api/v1/payments/vnpay/return` — VNPay return redirect (HTTP 302 to storefront result)
+* `POST   /api/v1/payments/momo/ipn` — Asynchronous server IPN confirmation for MoMo (HMAC-SHA256 signature)
+* `GET    /api/v1/payments/momo/return` — MoMo return redirect (HTTP 302 to storefront result)
+* `POST   /api/v1/payments/stripe/webhook` — Stripe Checkout webhook callback (`checkout.session.completed`)
+* `GET    /api/v1/payments/stripe/return` — Stripe return redirect (HTTP 302 to storefront result)
 
 ### Commission Settings (`/api/v1/admin/commission-settings`)
 * `GET    /api/v1/admin/commission-settings` — List configured commission rules with optional filtering by scope (`ADMIN`)
