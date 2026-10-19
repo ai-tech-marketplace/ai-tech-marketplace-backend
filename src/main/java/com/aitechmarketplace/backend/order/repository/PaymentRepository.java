@@ -10,4 +10,6 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     Optional<Payment> findByOrderId(Long orderId);
 
     Optional<Payment> findByTransactionReference(String transactionReference);
+
+    Optional<Payment> findTopByOrderIdOrderByCreatedAtDesc(Long orderId);
 }
