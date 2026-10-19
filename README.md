@@ -79,6 +79,7 @@ Database schema evolution is managed via Flyway migrations under `src/main/resou
 | `V7__create_addresses.sql` | `addresses` | Customer shipping addresses and default address markers. |
 | `V8__create_coupons.sql` | `coupons`, `coupon_usages` | Promo codes, discount rules, quotas, and customer usage audit trail. |
 | `V9__create_orders.sql` | `orders`, `order_items`, `payments` | Orders, immutable item snapshots, and payment records. |
+| `V10__create_commission_and_settlements.sql` | `commission_settings`, `seller_order_settlements` | Platform commission hierarchy settings and transactional seller order settlements. |
 
 ---
 
@@ -139,6 +140,28 @@ Base path: `/api/v1`
 * `GET    /api/v1/orders` — View customer's order history
 * `GET    /api/v1/orders/{id}` — View order details and items
 * `POST   /api/v1/orders/{id}/cancel` — Cancel order (releases reserved stock & coupon quota)
+
+### Commission Settings (`/api/v1/admin/commission-settings`)
+* `GET    /api/v1/admin/commission-settings` — List configured commission rules with optional filtering by scope (`ADMIN`)
+* `POST   /api/v1/admin/commission-settings` — Create a new commission setting rule (`ADMIN`)
+* `GET    /api/v1/admin/commission-settings/{id}` — Retrieve a commission setting by ID (`ADMIN`)
+* `PUT    /api/v1/admin/commission-settings/{id}` — Update rate or description (`ADMIN`)
+* `DELETE /api/v1/admin/commission-settings/{id}` — Delete commission setting (`ADMIN`)
+
+### Financial Analytics (`/api/v1/{admin,seller,customer}/analytics`)
+* **Platform Admin Analytics** (`ADMIN`):
+  * `GET /api/v1/admin/analytics/overview` — Platform summary KPI metrics (Gross GMV, Net Platform Revenue, completed orders, active seller count)
+  * `GET /api/v1/admin/analytics/top-sellers` — Top merchant performers by settled revenue and GMV
+  * `GET /api/v1/admin/analytics/top-categories` — Category breakdown by GMV and order volume
+  * `GET /api/v1/admin/analytics/revenue-chart` — Timeline revenue data points aggregated daily/weekly
+* **Merchant / Seller Analytics** (`SELLER`):
+  * `GET /api/v1/seller/analytics/overview` — Store KPI metrics (Total store GMV, net earned revenue, pending escrow, settled order count)
+  * `GET /api/v1/seller/analytics/top-products` — Top selling store products by units and net earned amount
+  * `GET /api/v1/seller/analytics/order-settlements` — Paginated ledger of individual order line settlements and statuses
+* **Customer Personal Analytics** (`CUSTOMER`):
+  * `GET /api/v1/customer/analytics/spending-summary` — Customer lifetime metrics (Total spending, orders placed, coupon savings)
+  * `GET /api/v1/customer/analytics/category-breakdown` — Personal spending distribution across tech categories
+  * `GET /api/v1/customer/analytics/monthly-spending` — Monthly spending progression over the past 6/12 months
 
 ---
 
