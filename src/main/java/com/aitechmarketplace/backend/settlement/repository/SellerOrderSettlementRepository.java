@@ -2,6 +2,9 @@ package com.aitechmarketplace.backend.settlement.repository;
 
 import com.aitechmarketplace.backend.analytics.repository.CategoryGmvProjection;
 import com.aitechmarketplace.backend.analytics.repository.DailyRevenueProjection;
+import com.aitechmarketplace.backend.analytics.repository.SellerOverviewProjection;
+import com.aitechmarketplace.backend.analytics.repository.SellerSettlementItemProjection;
+import com.aitechmarketplace.backend.analytics.repository.TopSellerProductProjection;
 import com.aitechmarketplace.backend.analytics.repository.TopSellerProjection;
 import com.aitechmarketplace.backend.settlement.entity.SellerOrderSettlement;
 import com.aitechmarketplace.backend.settlement.entity.SettlementStatus;
@@ -93,5 +96,91 @@ public interface SellerOrderSettlementRepository extends JpaRepository<SellerOrd
     List<DailyRevenueProjection> getDailyRevenueTimeline(
             @Param("startDate") OffsetDateTime startDate,
             @Param("endDate") OffsetDateTime endDate
+    );
+
+    @Query(value = """
+        SELECT COALESCE(SUM(s.item_subtotal), 0) AS grossSales,
+               COALESCE(SUM(s.commission_amount), 0) AS commissionPaid,
+               COALESCE(SUM(s.seller_net_amount), 0) AS netEarnings,
+               COUNT(DISTINCT s.order_id) AS totalOrders,
+               COALESCE(SUM(oi.quantity), 0) AS totalUnitsSold
+        FROM seller_order_settlements s
+        JOIN order_items oi ON s.order_item_id = oi.id
+        WHERE s.seller_id = :sellerId
+          AND s.created_at >= :startDate AND s.created_at <= :endDate
+          AND s.status != 'CANCELLED'
+    """, nativeQuery = true)
+    SellerOverviewProjection getSellerOverview(
+            @Param("sellerId") Long sellerId,
+            @Param("startDate") OffsetDateTime startDate,
+            @Param("endDate") OffsetDateTime endDate
+    );
+
+    @Query(value = """
+        SELECT COALESCE(SUM(seller_net_amount), 0)
+        FROM seller_order_settlements
+        WHERE seller_id = :sellerId
+          AND status = :status
+    """, nativeQuery = true)
+    BigDecimal getSellerBalanceByStatus(
+            @Param("sellerId") Long sellerId,
+            @Param("status") String status
+    );
+
+    @Query(value = """
+        SELECT p.id AS productId,
+               oi.product_name AS productName,
+               oi.sku AS sku,
+               COALESCE(SUM(oi.quantity), 0) AS unitsSold,
+               COALESCE(SUM(s.item_subtotal), 0) AS grossRevenue,
+               COALESCE(SUM(s.seller_net_amount), 0) AS netRevenue
+        FROM seller_order_settlements s
+        JOIN order_items oi ON s.order_item_id = oi.id
+        JOIN products p ON oi.product_id = p.id
+        WHERE s.seller_id = :sellerId
+          AND s.created_at >= :startDate AND s.created_at <= :endDate
+          AND s.status != 'CANCELLED'
+        GROUP BY p.id, oi.product_name, oi.sku
+        ORDER BY grossRevenue DESC
+        LIMIT :limit
+    """, nativeQuery = true)
+    List<TopSellerProductProjection> getTopSellerProducts(
+            @Param("sellerId") Long sellerId,
+            @Param("startDate") OffsetDateTime startDate,
+            @Param("endDate") OffsetDateTime endDate,
+            @Param("limit") int limit
+    );
+
+    @Query(value = """
+        SELECT s.id AS settlementId,
+               o.order_number AS orderNumber,
+               oi.product_name AS productName,
+               oi.quantity AS quantity,
+               s.item_subtotal AS itemSubtotal,
+               s.commission_rate AS commissionRate,
+               s.commission_amount AS commissionAmount,
+               s.platform_discount_subsidized AS platformDiscountSubsidized,
+               s.seller_net_amount AS sellerNetAmount,
+               s.status AS status,
+               s.settled_at AS settledAt,
+               s.created_at AS createdAt
+        FROM seller_order_settlements s
+        JOIN orders o ON s.order_id = o.id
+        JOIN order_items oi ON s.order_item_id = oi.id
+        WHERE s.seller_id = :sellerId
+          AND (:status IS NULL OR s.status = :status)
+        ORDER BY s.created_at DESC
+    """,
+    countQuery = """
+        SELECT COUNT(*)
+        FROM seller_order_settlements s
+        WHERE s.seller_id = :sellerId
+          AND (:status IS NULL OR s.status = :status)
+    """,
+    nativeQuery = true)
+    Page<SellerSettlementItemProjection> getSellerSettlementLedger(
+            @Param("sellerId") Long sellerId,
+            @Param("status") String status,
+            Pageable pageable
     );
 }
