@@ -19,5 +19,11 @@ public interface CommissionSettingRepository extends JpaRepository<CommissionSet
 
     List<CommissionSetting> findAllByIsActive(Boolean isActive);
 
+    List<CommissionSetting> findByScope(CommissionScope scope);
+
+    List<CommissionSetting> findByScopeAndIsActive(CommissionScope scope, Boolean isActive);
+
     boolean existsByScopeAndTargetId(CommissionScope scope, Long targetId);
+
+    boolean existsByScopeAndTargetIdIsNull(CommissionScope scope);
 }

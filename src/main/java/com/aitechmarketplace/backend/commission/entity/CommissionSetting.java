@@ -50,6 +50,14 @@ public class CommissionSetting {
         this.isActive = true;
     }
 
+    public CommissionSetting(CommissionScope scope, Long targetId, BigDecimal rate, String description, boolean isActive) {
+        this.scope = scope;
+        this.targetId = targetId;
+        this.rate = rate;
+        this.description = description;
+        this.isActive = isActive;
+    }
+
     @PrePersist
     public void prePersist() {
         OffsetDateTime now = OffsetDateTime.now();
@@ -110,8 +118,16 @@ public class CommissionSetting {
         return isActive;
     }
 
+    public boolean getIsActive() {
+        return isActive;
+    }
+
     public void setActive(boolean active) {
-        isActive = active;
+        this.isActive = active;
+    }
+
+    public void setIsActive(boolean active) {
+        this.isActive = active;
     }
 
     public OffsetDateTime getCreatedAt() {
