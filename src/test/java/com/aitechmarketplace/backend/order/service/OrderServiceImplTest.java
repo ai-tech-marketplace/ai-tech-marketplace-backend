@@ -64,6 +64,9 @@ class OrderServiceImplTest {
     @Mock
     private CheckoutTransactionService checkoutTransactionService;
 
+    @Mock
+    private com.aitechmarketplace.backend.settlement.repository.SellerOrderSettlementRepository sellerOrderSettlementRepository;
+
     @InjectMocks
     private OrderServiceImpl orderService;
 

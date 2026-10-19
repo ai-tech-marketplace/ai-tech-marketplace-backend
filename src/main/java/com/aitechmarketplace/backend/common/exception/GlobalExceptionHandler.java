@@ -60,6 +60,13 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(exception.getMessage(), errorCode));
     }
 
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(org.springframework.security.access.AccessDeniedException exception) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ErrorResponse.of(exception.getMessage() != null ? exception.getMessage() : "Access denied", "FORBIDDEN"));
+    }
+
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ErrorResponse> handleConflictException(ConflictException exception) {
         String errorCode = exception.getErrorCode() != null ? exception.getErrorCode() : "CONFLICT";
