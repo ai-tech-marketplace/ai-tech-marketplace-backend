@@ -72,17 +72,17 @@
   - `List<SellerOrderSettlement> findBySellerId(Long sellerId)`
   - `Page<SellerOrderSettlement> findBySellerIdAndStatus(Long sellerId, SettlementStatus status, Pageable pageable)`
 
-- [ ] **Step 1: Write `V10__create_commission_and_settlements.sql` migration**
+- [x] **Step 1: Write `V10__create_commission_and_settlements.sql` migration**
   Create `commission_settings` and `seller_order_settlements` tables with primary keys, foreign keys (`orders(id)`, `order_items(id)`, `users(id)`), checks (`rate >= 0.0000 AND rate <= 1.0000`), unique constraint `(scope, target_id)`, and performance indexes matching `database/schema.md`.
-- [ ] **Step 2: Create Enums and Entities**
+- [x] **Step 2: Create Enums and Entities**
   Implement `CommissionScope`, `SettlementStatus`, `CommissionSetting` entity, and `SellerOrderSettlement` entity with JPA annotations and audit fields.
-- [ ] **Step 3: Create Spring Data Repositories**
+- [x] **Step 3: Create Spring Data Repositories**
   Define repository interfaces with lookup and existence methods.
-- [ ] **Step 4: Write repository tests**
+- [x] **Step 4: Write repository tests**
   Test unique constraint enforcement on `(scope, target_id)`, rate boundary checks, and foreign key cascade behaviors.
   Run: `./mvnw test -Dtest=CommissionSettingRepositoryTest,SellerOrderSettlementRepositoryTest`
   Expected: PASS
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add src/main/resources/db/migration/V10__create_commission_and_settlements.sql src/main/java/com/aitechmarketplace/backend/commission/ src/main/java/com/aitechmarketplace/backend/settlement/ src/test/java/com/aitechmarketplace/backend/
   git commit -m "feat(db): add V10 migration and entities for commission settings and settlements"
@@ -116,24 +116,24 @@
   - `PUT /api/v1/admin/commission-settings/{id}`
   - `DELETE /api/v1/admin/commission-settings/{id}`
 
-- [ ] **Step 1: Create DTOs with Validation**
+- [x] **Step 1: Create DTOs with Validation**
   Create `CommissionSettingCreateRequest(scope, targetId, rate, description, isActive)` and `CommissionSettingUpdateRequest(rate, description, isActive)` with Jakarta validation (`@DecimalMin("0.0000")`, `@DecimalMax("1.0000")`).
-- [ ] **Step 2: Write unit test for `CommissionSettingService`**
+- [x] **Step 2: Write unit test for `CommissionSettingService`**
   Cover precedence resolution:
   - When seller rate exists $\to$ returns seller rate.
   - When only category rate exists $\to$ returns category rate.
   - When only global rate exists $\to$ returns global rate.
   - When no rules exist $\to$ returns default `0.0500`.
   - Duplicate `(scope, target_id)` creation $\to$ throws `ConflictException("COMMISSION_DUPLICATE_SCOPE")`.
-- [ ] **Step 3: Implement `CommissionSettingServiceImpl`**
+- [x] **Step 3: Implement `CommissionSettingServiceImpl`**
   Implement CRUD operations and rate resolution logic according to `BR-COMMISSION-001` and `BR-COMMISSION-002`.
-- [ ] **Step 4: Implement `AdminCommissionController`**
+- [x] **Step 4: Implement `AdminCommissionController`**
   Protect with `@PreAuthorize("hasRole('ADMIN')")`, returning `ApiResponse<T>`.
-- [ ] **Step 5: Write and run integration tests**
+- [x] **Step 5: Write and run integration tests**
   Test admin authentication, validation of rate bounds, and CRUD flow via MockMvc.
   Run: `./mvnw test -Dtest=AdminCommissionControllerIntegrationTest,CommissionSettingServiceImplTest`
   Expected: PASS
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
   ```bash
   git add src/main/java/com/aitechmarketplace/backend/commission/ src/test/java/com/aitechmarketplace/backend/commission/
   git commit -m "feat(commission): implement admin commission settings APIs and precedence resolution"
@@ -155,21 +155,21 @@
 - Produces: Atomically populated `SellerOrderSettlement` records upon `createOrder()`.
 - Updates: Transitions settlements to `CANCELLED` upon `cancelOrder()`.
 
-- [ ] **Step 1: Write failing test for settlement creation during checkout**
+- [x] **Step 1: Write failing test for settlement creation during checkout**
   Verify that when an order with 2 items from different sellers is checked out, exactly 2 `SellerOrderSettlement` records are persisted with accurate `commission_rate`, `commission_amount`, `seller_net_amount`, and `status = PENDING`.
-- [ ] **Step 2: Update `CheckoutTransactionService`**
+- [x] **Step 2: Update `CheckoutTransactionService`**
   Inject `CommissionSettingService` and `SellerOrderSettlementRepository`. For each cart item in the checkout loop:
   - Query seller and category from product.
   - Compute `commissionRate = commissionSettingService.resolveCommissionRate(product.getSellerId(), product.getCategoryId())`.
   - Calculate `commissionAmount = itemSubtotal.multiply(commissionRate).setScale(2, RoundingMode.HALF_UP)`.
   - Calculate `sellerNetAmount = itemSubtotal.subtract(commissionAmount)`.
   - Persist `SellerOrderSettlement`.
-- [ ] **Step 3: Update `OrderServiceImpl.cancelOrder()`**
+- [x] **Step 3: Update `OrderServiceImpl.cancelOrder()`**
   When order cancellation succeeds, find all settlements for the order and set `status = SettlementStatus.CANCELLED`.
-- [ ] **Step 4: Run tests to verify passing**
+- [x] **Step 4: Run tests to verify passing**
   Run: `./mvnw test -Dtest=CheckoutTransactionServiceSettlementTest,OrderCancellationSettlementTest,OrderCheckoutIntegrationTest`
   Expected: PASS
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add src/main/java/com/aitechmarketplace/backend/order/ src/test/java/com/aitechmarketplace/backend/order/
   git commit -m "feat(order): snapshot seller order settlements during checkout and void on cancellation"
@@ -203,18 +203,18 @@
   - `GET /api/v1/admin/analytics/top-categories`
   - `GET /api/v1/admin/analytics/revenue-chart`
 
-- [ ] **Step 1: Write unit tests for `AdminAnalyticsService`**
+- [x] **Step 1: Write unit tests for `AdminAnalyticsService`**
   Mock repository aggregations to assert GMV sum, commission total, order counts, cancellation rate percentage, and top sellers ranking.
-- [ ] **Step 2: Add custom aggregation queries to repositories**
+- [x] **Step 2: Add custom aggregation queries to repositories**
   Add `@Query` methods on `OrderRepository` and `SellerOrderSettlementRepository` for date-bounded GMV, platform revenue, and top seller sums.
-- [ ] **Step 3: Implement `AdminAnalyticsServiceImpl`**
+- [x] **Step 3: Implement `AdminAnalyticsServiceImpl`**
   Implement logic for period parsing (`7d`, `30d`, `this_month`, `last_month`) and date boundary validation ($\le 365$ days).
-- [ ] **Step 4: Implement `AdminAnalyticsController`**
+- [x] **Step 4: Implement `AdminAnalyticsController`**
   Expose endpoints protected with `@PreAuthorize("hasRole('ADMIN')")`.
-- [ ] **Step 5: Run integration tests**
+- [x] **Step 5: Run integration tests**
   Run: `./mvnw test -Dtest=AdminAnalyticsControllerIntegrationTest,AdminAnalyticsServiceImplTest`
   Expected: PASS
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
   ```bash
   git add src/main/java/com/aitechmarketplace/backend/analytics/ src/test/java/com/aitechmarketplace/backend/analytics/
   git commit -m "feat(analytics): implement platform admin financial analytics and leaderboard endpoints"
@@ -244,18 +244,18 @@
   - `GET /api/v1/seller/analytics/top-products`
   - `GET /api/v1/seller/analytics/order-settlements`
 
-- [ ] **Step 1: Write unit tests for `SellerAnalyticsService`**
+- [x] **Step 1: Write unit tests for `SellerAnalyticsService`**
   Verify gross sales, commission deduction, net earnings, pending settlement vs available balance calculations for the seller.
-- [ ] **Step 2: Add seller aggregation queries to `SellerOrderSettlementRepository`**
+- [x] **Step 2: Add seller aggregation queries to `SellerOrderSettlementRepository`**
   Add queries for `SUM(itemSubtotal)`, `SUM(commissionAmount)`, `SUM(sellerNetAmount)` filtered by `sellerId`, `status`, and `createdAt` range.
-- [ ] **Step 3: Implement `SellerAnalyticsServiceImpl`**
+- [x] **Step 3: Implement `SellerAnalyticsServiceImpl`**
   Enforce seller ID scoping so no merchant can view another's ledger or metrics.
-- [ ] **Step 4: Implement `SellerAnalyticsController`**
+- [x] **Step 4: Implement `SellerAnalyticsController`**
   Extract authenticated user ID from `Authentication` context and enforce `@PreAuthorize("hasRole('SELLER')")`.
-- [ ] **Step 5: Run integration tests**
+- [x] **Step 5: Run integration tests**
   Run: `./mvnw test -Dtest=SellerAnalyticsControllerIntegrationTest,SellerAnalyticsServiceImplTest`
   Expected: PASS
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
   ```bash
   git add src/main/java/com/aitechmarketplace/backend/analytics/ src/test/java/com/aitechmarketplace/backend/analytics/
   git commit -m "feat(analytics): implement seller store earnings, escrow ledger, and top products APIs"
@@ -285,18 +285,18 @@
   - `GET /api/v1/customer/analytics/category-breakdown`
   - `GET /api/v1/customer/analytics/monthly-spending`
 
-- [ ] **Step 1: Write unit tests for `CustomerAnalyticsService`**
+- [x] **Step 1: Write unit tests for `CustomerAnalyticsService`**
   Verify aggregation of total spent, total saved via coupons, category distribution percentages, and monthly trajectory points.
-- [ ] **Step 2: Add customer spending queries to `OrderRepository`**
+- [x] **Step 2: Add customer spending queries to `OrderRepository`**
   Add queries for user-specific total spend, discount sums, and category aggregations joined through `order_items` and `products`.
-- [ ] **Step 3: Implement `CustomerAnalyticsServiceImpl`**
+- [x] **Step 3: Implement `CustomerAnalyticsServiceImpl`**
   Calculate promotional savings and round percentage distributions.
-- [ ] **Step 4: Implement `CustomerAnalyticsController`**
+- [x] **Step 4: Implement `CustomerAnalyticsController`**
   Protect with `@PreAuthorize("isAuthenticated()")` and bind to authenticated user ID.
-- [ ] **Step 5: Run integration tests**
+- [x] **Step 5: Run integration tests**
   Run: `./mvnw test -Dtest=CustomerAnalyticsControllerIntegrationTest,CustomerAnalyticsServiceImplTest`
   Expected: PASS
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
   ```bash
   git add src/main/java/com/aitechmarketplace/backend/analytics/ src/test/java/com/aitechmarketplace/backend/analytics/
   git commit -m "feat(analytics): implement customer spending summary, savings, and category distribution APIs"
@@ -310,12 +310,12 @@
 - Modify: `README.md` (Update backend features list & API route summary)
 - Test: Run full test suite across the entire application
 
-- [ ] **Step 1: Run full Maven test suite**
+- [x] **Step 1: Run full Maven test suite**
   Run: `./mvnw clean test`
   Expected: BUILD SUCCESS with 100% test pass rate across all modules.
-- [ ] **Step 2: Update backend README**
+- [x] **Step 2: Update backend README**
   Document new endpoints under `/api/v1/admin/commission-settings`, `/api/v1/admin/analytics`, `/api/v1/seller/analytics`, and `/api/v1/customer/analytics`.
-- [ ] **Step 3: Commit and verify clean working tree**
+- [x] **Step 3: Commit and verify clean working tree**
   ```bash
   git add README.md
   git commit -m "docs: document commission settings and multi-tier analytics in backend README"
