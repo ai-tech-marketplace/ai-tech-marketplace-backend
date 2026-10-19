@@ -69,17 +69,17 @@
   - `Optional<ReviewHelpfulVote> findByReviewIdAndUserId(Long reviewId, Long userId)`
   - `boolean existsByReviewIdAndUserId(Long reviewId, Long userId)`
 
-- [ ] **Step 1: Write `V11__create_reviews.sql` migration**
+- [x] **Step 1: Write `V11__create_reviews.sql` migration**
   Create tables `reviews`, `review_images`, and `review_helpful_votes` with foreign keys, checks (`rating BETWEEN 1 AND 5`), unique constraints `(user_id, product_id, order_item_id)` and `(review_id, user_id)`, and performance indexes.
-- [ ] **Step 2: Create Enums and Entities**
+- [x] **Step 2: Create Enums and Entities**
   Implement `ReviewStatus`, `Review`, `ReviewImage`, and `ReviewHelpfulVote` with JPA annotations.
-- [ ] **Step 3: Create Spring Data Repositories**
+- [x] **Step 3: Create Spring Data Repositories**
   Define repository interfaces with query methods.
-- [ ] **Step 4: Write repository tests**
+- [x] **Step 4: Write repository tests**
   Test constraints, unique checks, foreign key cascading, and query executions.
   Run: `./mvnw test -Dtest=ReviewRepositoryTest`
   Expected: PASS
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add src/main/resources/db/migration/V11__create_reviews.sql src/main/java/com/aitechmarketplace/backend/review/ src/test/java/com/aitechmarketplace/backend/review/
   git commit -m "feat(db): add V11 migration and entities for reviews, images, and helpful votes"
@@ -103,15 +103,15 @@
 - Produces Endpoint:
   - `POST /api/v1/reviews/images` (multipart/form-data, `@PreAuthorize("isAuthenticated()")`)
 
-- [ ] **Step 1: Create `ReviewImageUploadResponse` DTO**
-- [ ] **Step 2: Write unit test for `ReviewImageServiceImpl`**
+- [x] **Step 1: Create `ReviewImageUploadResponse` DTO**
+- [x] **Step 2: Write unit test for `ReviewImageServiceImpl`**
   Test file validation (reject pdf/exe, reject $> 5$MB) and S3 key generation.
-- [ ] **Step 3: Implement `ReviewImageServiceImpl`**
-- [ ] **Step 4: Implement `ReviewImageController`**
-- [ ] **Step 5: Run integration tests**
+- [x] **Step 3: Implement `ReviewImageServiceImpl`**
+- [x] **Step 4: Implement `ReviewImageController`**
+- [x] **Step 5: Run integration tests**
   Run: `./mvnw test -Dtest=ReviewImageControllerIntegrationTest,ReviewImageServiceImplTest`
   Expected: PASS
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
   ```bash
   git add src/main/java/com/aitechmarketplace/backend/review/ src/test/java/com/aitechmarketplace/backend/review/
   git commit -m "feat(review): implement review image upload API with S3 storage"
@@ -140,10 +140,10 @@
   - `POST /api/v1/products/{productId}/reviews` (`ROLE_CUSTOMER`)
   - `PUT /api/v1/reviews/{id}` (`ROLE_CUSTOMER`)
 
-- [ ] **Step 1: Create DTOs with Validation annotations**
+- [x] **Step 1: Create DTOs with Validation annotations**
   `ReviewCreateRequest` (`orderItemId` not null, `rating` between 1 and 5, `comment` max 2000 chars, `imageUrls` max 5).
   `ReviewUpdateRequest` (`rating` between 1 and 5, `comment` max 2000 chars, `imageUrls` max 5).
-- [ ] **Step 2: Write unit tests for `ReviewServiceImpl`**
+- [x] **Step 2: Write unit tests for `ReviewServiceImpl`**
   Cover:
   - Caller does not own order item $\to$ throws `BadRequestException("NOT_VERIFIED_PURCHASE")`.
   - Order status is not `DELIVERED` $\to$ throws `BadRequestException("ORDER_NOT_DELIVERED")`.
@@ -151,12 +151,12 @@
   - Valid review creates `Review` and associated `ReviewImage` items.
   - Editing within 30 days succeeds and sets `is_edited = true`.
   - Editing after 30 days throws `BadRequestException("REVIEW_EDIT_WINDOW_EXPIRED")`.
-- [ ] **Step 3: Implement `createReview` and `updateReview` in `ReviewServiceImpl`**
-- [ ] **Step 4: Implement endpoints in `ReviewController`**
-- [ ] **Step 5: Run integration tests**
+- [x] **Step 3: Implement `createReview` and `updateReview` in `ReviewServiceImpl`**
+- [x] **Step 4: Implement endpoints in `ReviewController`**
+- [x] **Step 5: Run integration tests**
   Run: `./mvnw test -Dtest=ReviewSubmissionIntegrationTest,ReviewServiceImplTest`
   Expected: PASS
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
   ```bash
   git add src/main/java/com/aitechmarketplace/backend/review/ src/test/java/com/aitechmarketplace/backend/review/
   git commit -m "feat(review): implement customer review submission and 30-day editing with verified purchase check"
@@ -182,17 +182,17 @@
   - `GET /api/v1/products/{productId}/reviews` (Public: supports `page`, `size`, `rating`, `hasImages`, `sort`: `newest`, `highest_rating`, `lowest_rating`, `most_helpful`)
   - `GET /api/v1/products/{productId}/reviews/summary` (Public)
 
-- [ ] **Step 1: Write integration tests for public review listing and summary**
+- [x] **Step 1: Write integration tests for public review listing and summary**
   Assert filtering by rating, filtering by `hasImages`, sort by `most_helpful`, and calculation of `averageRating` and distribution map.
-- [ ] **Step 2: Add custom JPQL/native aggregation queries to `ReviewRepository`**
+- [x] **Step 2: Add custom JPQL/native aggregation queries to `ReviewRepository`**
   Query for average rating, counts grouped by rating, and count where `images IS NOT EMPTY`.
-- [ ] **Step 3: Implement listing and summary in `ReviewServiceImpl`**
+- [x] **Step 3: Implement listing and summary in `ReviewServiceImpl`**
   Exclude any review with `status = HIDDEN`.
-- [ ] **Step 4: Expose public endpoints in `ReviewController`**
-- [ ] **Step 5: Run integration tests**
+- [x] **Step 4: Expose public endpoints in `ReviewController`**
+- [x] **Step 5: Run integration tests**
   Run: `./mvnw test -Dtest=PublicReviewControllerIntegrationTest`
   Expected: PASS
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
   ```bash
   git add src/main/java/com/aitechmarketplace/backend/review/ src/test/java/com/aitechmarketplace/backend/review/
   git commit -m "feat(review): implement public review filtering, pagination, and rating metric summary"
@@ -220,19 +220,19 @@
   - `POST /api/v1/reviews/{id}/helpful` (`isAuthenticated()`)
   - `POST /api/v1/reviews/{id}/seller-reply` (`ROLE_SELLER` or `ROLE_ADMIN`)
 
-- [ ] **Step 1: Write unit tests for helpful toggle and seller reply**
+- [x] **Step 1: Write unit tests for helpful toggle and seller reply**
   - Self-voting throws `BadRequestException("CANNOT_VOTE_OWN_REVIEW")`.
   - First vote increments `helpful_count` and returns `voted: true`.
   - Second vote deletes vote record, decrements `helpful_count`, and returns `voted: false`.
   - Seller replying to their own product's review succeeds.
   - Seller replying to a review of another seller's product throws `ForbiddenException("FORBIDDEN_SELLER_REPLY")`.
   - Seller replying when a reply already exists throws `ConflictException("SELLER_ALREADY_REPLIED")`.
-- [ ] **Step 2: Implement `toggleHelpfulVote` and `postSellerReply` in `ReviewServiceImpl`**
-- [ ] **Step 3: Expose endpoints in `ReviewController`**
-- [ ] **Step 4: Run integration tests**
+- [x] **Step 2: Implement `toggleHelpfulVote` and `postSellerReply` in `ReviewServiceImpl`**
+- [x] **Step 3: Expose endpoints in `ReviewController`**
+- [x] **Step 4: Run integration tests**
   Run: `./mvnw test -Dtest=HelpfulVoteAndSellerReplyIntegrationTest,HelpfulVoteAndSellerReplyTest`
   Expected: PASS
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add src/main/java/com/aitechmarketplace/backend/review/ src/test/java/com/aitechmarketplace/backend/review/
   git commit -m "feat(review): implement helpful vote toggle and seller official reply APIs"
@@ -256,17 +256,17 @@
 - Produces Endpoint:
   - `PATCH /api/v1/admin/reviews/{id}/status` (`ROLE_ADMIN`)
 
-- [ ] **Step 1: Write integration test for admin moderation**
+- [x] **Step 1: Write integration test for admin moderation**
   - Setting status to `HIDDEN` without reason fails validation.
   - Setting status to `HIDDEN` with reason marks review `HIDDEN`.
   - Non-admin user gets HTTP 403 Forbidden.
   - Once review is `HIDDEN`, public `GET /products/{id}/reviews` no longer returns it.
-- [ ] **Step 2: Implement moderation method in `ReviewServiceImpl`**
-- [ ] **Step 3: Create `AdminReviewController` with `@PreAuthorize("hasRole('ADMIN')")`**
-- [ ] **Step 4: Run integration tests**
+- [x] **Step 2: Implement moderation method in `ReviewServiceImpl`**
+- [x] **Step 3: Create `AdminReviewController` with `@PreAuthorize("hasRole('ADMIN')")`**
+- [x] **Step 4: Run integration tests**
   Run: `./mvnw test -Dtest=AdminReviewControllerIntegrationTest`
   Expected: PASS
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add src/main/java/com/aitechmarketplace/backend/review/ src/test/java/com/aitechmarketplace/backend/review/
   git commit -m "feat(review): implement admin review moderation API"
@@ -280,12 +280,12 @@
 - Modify: `README.md` (Update backend features list & API route summary)
 - Test: Run full test suite across the entire application
 
-- [ ] **Step 1: Run full Maven test suite**
+- [x] **Step 1: Run full Maven test suite**
   Run: `./mvnw clean test`
   Expected: BUILD SUCCESS with 100% test pass rate across all modules.
-- [ ] **Step 2: Update backend README**
+- [x] **Step 2: Update backend README**
   Document `V11` migration and new endpoints under `/api/v1/products/{productId}/reviews`, `/api/v1/reviews/*`, and `/api/v1/admin/reviews/*`.
-- [ ] **Step 3: Commit and verify clean working tree**
+- [x] **Step 3: Commit and verify clean working tree**
   ```bash
   git add README.md docs/superpowers/plans/2026-10-19-product-reviews-and-ratings-implementation.md
   git commit -m "docs: document product reviews and ratings in backend README and implementation plan"
