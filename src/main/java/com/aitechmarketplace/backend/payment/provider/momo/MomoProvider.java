@@ -12,6 +12,7 @@ import com.aitechmarketplace.backend.payment.dto.momo.MomoCreatePaymentResponse;
 import com.aitechmarketplace.backend.payment.provider.PaymentGatewayProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -29,14 +30,14 @@ public class MomoProvider implements PaymentGatewayProvider {
     private final MomoProperties properties;
     private final RestClient restClient;
 
-    public MomoProvider(MomoProperties properties, RestClient.Builder restClientBuilder) {
-        this.properties = properties;
-        this.restClient = restClientBuilder != null ? restClientBuilder.build() : RestClient.builder().build();
+    @Autowired
+    public MomoProvider(MomoProperties properties) {
+        this(properties, RestClient.builder().build());
     }
 
     public MomoProvider(MomoProperties properties, RestClient restClient) {
         this.properties = properties;
-        this.restClient = restClient;
+        this.restClient = restClient != null ? restClient : RestClient.builder().build();
     }
 
     @Override

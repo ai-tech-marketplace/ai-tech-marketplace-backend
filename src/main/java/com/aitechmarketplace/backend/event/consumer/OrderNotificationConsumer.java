@@ -3,6 +3,7 @@ package com.aitechmarketplace.backend.event.consumer;
 import com.aitechmarketplace.backend.event.EventTopics;
 import com.aitechmarketplace.backend.event.OrderCancelledEvent;
 import com.aitechmarketplace.backend.event.OrderCreatedEvent;
+import com.aitechmarketplace.backend.event.OrderPaidEvent;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,10 @@ public class OrderNotificationConsumer {
             log.info("[NOTIFICATION] Order created: orderNumber={}, userId={}, total={}",
                     created.orderNumber(), created.userId(), created.totalAmount());
             // TODO: send order confirmation email
+        } else if (event instanceof OrderPaidEvent paid) {
+            log.info("[NOTIFICATION] Order paid: orderNumber={}, userId={}, total={}, method={}",
+                    paid.orderNumber(), paid.userId(), paid.totalAmount(), paid.paymentMethod());
+            // TODO: send payment receipt notification
         } else if (event instanceof OrderCancelledEvent cancelled) {
             log.info("[NOTIFICATION] Order cancelled: orderNumber={}, userId={}, reason={}",
                     cancelled.orderNumber(), cancelled.userId(), cancelled.reason());

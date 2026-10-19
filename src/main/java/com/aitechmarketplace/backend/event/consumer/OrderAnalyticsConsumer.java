@@ -3,6 +3,7 @@ package com.aitechmarketplace.backend.event.consumer;
 import com.aitechmarketplace.backend.event.EventTopics;
 import com.aitechmarketplace.backend.event.OrderCancelledEvent;
 import com.aitechmarketplace.backend.event.OrderCreatedEvent;
+import com.aitechmarketplace.backend.event.OrderPaidEvent;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +25,9 @@ public class OrderAnalyticsConsumer {
                     created.orderNumber(), created.totalAmount(),
                     created.items() != null ? created.items().size() : 0);
             // TODO: push to analytics pipeline (e.g. BigQuery, Segment)
+        } else if (event instanceof OrderPaidEvent paid) {
+            log.info("[ANALYTICS] Order paid: orderNumber={}, total={}, method={}",
+                    paid.orderNumber(), paid.totalAmount(), paid.paymentMethod());
         } else if (event instanceof OrderCancelledEvent cancelled) {
             log.info("[ANALYTICS] Order cancelled: orderNumber={}, reason={}",
                     cancelled.orderNumber(), cancelled.reason());

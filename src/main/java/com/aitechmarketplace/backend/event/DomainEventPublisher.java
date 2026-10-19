@@ -41,4 +41,17 @@ public class DomainEventPublisher {
                     }
                 });
     }
+
+    public void publishOrderPaid(OrderPaidEvent event) {
+        log.info("Publishing OrderPaidEvent for order: {}, userId: {}", event.orderNumber(), event.userId());
+        kafkaTemplate.send(EventTopics.ORDERS, event.userId().toString(), event)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        log.error("Failed to publish OrderPaidEvent for order: {}, userId: {}", event.orderNumber(), event.userId(), ex);
+                    } else {
+                        log.info("Successfully published OrderPaidEvent for order: {}, userId: {}, partition: {}",
+                                event.orderNumber(), event.userId(), result.getRecordMetadata().partition());
+                    }
+                });
+    }
 }
