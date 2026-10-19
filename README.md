@@ -7,7 +7,7 @@ The core transactional backend service for the **AI Tech Marketplace** platform.
 ## Technology Stack
 
 * **Language & Framework**: Java 21, Spring Boot 4.1.1
-* **Database & Persistence**: PostgreSQL 17, Spring Data JPA, Hibernate, Flyway Database Migrations (V1–V9)
+* **Database & Persistence**: PostgreSQL 17, Spring Data JPA, Hibernate, Flyway Database Migrations (V1–V11)
 * **Security & Auth**: Spring Security 6, Stateless JWT (`io.jsonwebtoken` 0.13.0), BCrypt password hashing
 * **Caching & Distributed Locking**: Redis 7, Spring Data Redis (Lettuce), Spring Integration Redis (`RedisLockRegistry`)
 * **Event Streaming & Messaging**: Apache Kafka 3.9 (KRaft mode), Spring Kafka with JsonSerializer/JsonDeserializer, Dead Letter Topic (DLT)
@@ -80,6 +80,7 @@ Database schema evolution is managed via Flyway migrations under `src/main/resou
 | `V8__create_coupons.sql` | `coupons`, `coupon_usages` | Promo codes, discount rules, quotas, and customer usage audit trail. |
 | `V9__create_orders.sql` | `orders`, `order_items`, `payments` | Orders, immutable item snapshots, and payment records. |
 | `V10__create_commission_and_settlements.sql` | `commission_settings`, `seller_order_settlements` | Platform commission hierarchy settings and transactional seller order settlements. |
+| `V11__create_reviews.sql` | `reviews`, `review_images`, `review_helpful_votes` | Product reviews, ratings, verified purchase badge, photo attachments, helpful votes, and seller replies. |
 
 ---
 
@@ -112,6 +113,16 @@ Base path: `/api/v1`
 * `PATCH  /api/v1/products/{id}/stock` — Restock / update product inventory
 * `POST   /api/v1/products/{id}/images` — Upload product gallery image (`multipart/form-data`)
 * `DELETE /api/v1/products/{id}/images/{imageId}` — Delete product image
+
+### Product Reviews & Ratings (`/api/v1/reviews`, `/api/v1/products/{id}/reviews`)
+* `GET    /api/v1/products/{productId}/reviews` — List public reviews with pagination & filtering (`rating`, `hasImages`, `sort`)
+* `GET    /api/v1/products/{productId}/reviews/summary` — Aggregate rating metrics (averageRating, totalReviews, 1-5 star distribution)
+* `POST   /api/v1/reviews` — Submit verified review (`CUSTOMER`, verified on `DELIVERED` order item, max 5 images)
+* `PUT    /api/v1/reviews/{id}` — Edit review within 30-day grace period (`CUSTOMER`, review author)
+* `POST   /api/v1/reviews/images` — Upload review photo attachment (`multipart/form-data`, JPEG/PNG/WEBP $\le$ 5MB)
+* `POST   /api/v1/reviews/{id}/helpful` — Toggle helpful vote on a review (`CUSTOMER`, author excluded)
+* `POST   /api/v1/reviews/{id}/seller-reply` — Post official seller reply (`SELLER`, owner of product)
+* `PATCH  /api/v1/admin/reviews/{id}/status` — Moderate review status (`ADMIN`, `VISIBLE`/`HIDDEN` with required reason)
 
 ### Shopping Cart (`/api/v1/cart`)
 * `GET    /api/v1/cart` — Get current customer's cart
