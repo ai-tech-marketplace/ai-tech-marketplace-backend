@@ -87,4 +87,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("userId") Long userId,
             @Param("startDate") OffsetDateTime startDate
     );
+
+    @EntityGraph(attributePaths = {"items", "items.product", "user"})
+    @Query("""
+        SELECT o FROM Order o
+        WHERE o.status = com.aitechmarketplace.backend.order.entity.OrderStatus.PENDING
+          AND o.paymentStatus = com.aitechmarketplace.backend.order.entity.PaymentStatus.PENDING
+          AND (o.paymentMethod IS NULL OR o.paymentMethod != com.aitechmarketplace.backend.order.entity.PaymentMethod.COD)
+          AND o.createdAt < :cutoffTime
+    """)
+    List<Order> findExpiredPendingOrders(@Param("cutoffTime") OffsetDateTime cutoffTime);
 }

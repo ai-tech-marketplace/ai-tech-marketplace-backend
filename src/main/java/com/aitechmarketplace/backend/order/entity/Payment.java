@@ -23,12 +23,27 @@ public class Payment {
     @Column(name = "transaction_reference", length = 255)
     private String transactionReference;
 
+    @Column(length = 50)
+    private String provider;
+
+    @Column(name = "provider_transaction_id", length = 100)
+    private String providerTransactionId;
+
+    @Column(name = "provider_response", columnDefinition = "TEXT")
+    private String providerResponse;
+
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private PaymentStatus status = PaymentStatus.PENDING;
+
+    @Column(name = "paid_at")
+    private OffsetDateTime paidAt;
+
+    @Column(name = "expires_at")
+    private OffsetDateTime expiresAt;
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
@@ -90,6 +105,46 @@ public class Payment {
 
     public void setTransactionReference(String transactionReference) {
         this.transactionReference = transactionReference;
+    }
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
+
+    public String getProviderTransactionId() {
+        return providerTransactionId;
+    }
+
+    public void setProviderTransactionId(String providerTransactionId) {
+        this.providerTransactionId = providerTransactionId;
+    }
+
+    public String getProviderResponse() {
+        return providerResponse;
+    }
+
+    public void setProviderResponse(String providerResponse) {
+        this.providerResponse = providerResponse;
+    }
+
+    public OffsetDateTime getPaidAt() {
+        return paidAt;
+    }
+
+    public void setPaidAt(OffsetDateTime paidAt) {
+        this.paidAt = paidAt;
+    }
+
+    public OffsetDateTime getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(OffsetDateTime expiresAt) {
+        this.expiresAt = expiresAt;
     }
 
     public BigDecimal getAmount() {

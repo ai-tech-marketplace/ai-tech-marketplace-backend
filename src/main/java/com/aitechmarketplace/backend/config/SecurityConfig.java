@@ -56,6 +56,14 @@ public class SecurityConfig {
                     "/api/v1/brands/**",
                     "/api/v1/coupons"
                 ).permitAll()
+                .requestMatchers(
+                    "/api/v1/payments/vnpay/ipn",
+                    "/api/v1/payments/vnpay/return",
+                    "/api/v1/payments/momo/ipn",
+                    "/api/v1/payments/momo/return",
+                    "/api/v1/payments/stripe/webhook",
+                    "/api/v1/payments/stripe/return"
+                ).permitAll()
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/v1/seller/**").hasRole("SELLER")
                 .anyRequest().authenticated()
